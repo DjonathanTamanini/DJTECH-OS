@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Financeiro - DJTECH-OS{% endblock %}
+
+{% block page_title %}Dashboard Financeiro{% endblock %}
+{% block page_subtitle %}Visão geral das finanças{% endblock %}
+
+{% block content %}
+<!-- Cards de Resumo Financeiro -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body">
+                <h6 class="text-muted">Receitas do Mês</h6>
+                <h2 class="text-success">R$ {{ receitas_mes|floatformat:2 }}</h2>
+                <small class="text-muted">Recebidas</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h6 class="text-muted">Despesas do Mês</h6>
+                <h2 class="text-danger">R$ {{ despesas_mes|floatformat:2 }}</h2>
+                <small class="text-muted">Pagas</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body">
+                <h6 class="text-muted">Lucro do Mês</h6>
+                <h2 class="{% if lucro_mes >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    R$ {{ lucro_mes|floatformat:2 }}
+                </h2>
+                <small class="text-muted">Receitas - Despesas</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body">
+                <h6 class="text-muted">Contas Vencidas</h6>
+                <h2 class="text-warning">{{ contas_vencidas }}</h2>
+                <small class="text-muted">Pendentes</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contas a Pagar e Receber -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-down-circle"></i> Contas a Receber
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h1 class="text-success">R$ {{ a_receber|floatformat:2 }}</h1>
+                <p class="text-muted">Total pendente de recebimento</p>
+                <a href="{% url 'transacao_lista' %}?tipo=receita&status=pendente" class="btn btn-success">
+                    Ver Detalhes
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-up-circle"></i> Contas a Pagar
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <h1 class="text-danger">R$ {{ a_pagar|floatformat:2 }}</h1>
+                <p class="text-muted">Total pendente de pagamento</p>
+                <a href="{% url 'transacao_lista' %}?tipo=despesa&status=pendente" class="btn btn-danger">
+                    Ver Detalhes
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ações Rápidas e Últimas Transações -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Últimas Transações
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transacao in ultimas_transacoes %}
+                            <tr onclick="window.location='{% url 'transacao_lista' %}'" style="cursor: pointer;">
+                                <td>{{ transacao.data_vencimento|date:"d/m/Y" }}</td>
+                                <td>{{ transacao.descricao|truncatewords:5 }}</td>
+                                <td>
+                                    <span class="badge" style="background-color: {{ transacao.categoria.cor }};">
+                                        {{ transacao.categoria.nome }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if transacao.tipo == 'receita' %}
+                                        <span class="badge bg-success">Receita</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Despesa</span>
+                                    {% endif %}
+                                </td>
+                                <td class="{% if transacao.tipo == 'receita' %}text-success{% else %}text-danger{% endif %}">
+                                    R$ {{ transacao.valor|floatformat:2 }}
+                                </td>
+                                <td>
+                                    {% if transacao.status == 'pago' %}
+                                        <span class="badge bg-success">Pago</span>
+                                    {% elif transacao.esta_vencida %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Pendente</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    Nenhuma transação registrada
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Ações Rápidas -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning"></i> Ações Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'transacao_criar' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Nova Transação
+                    </a>
+                    <a href="{% url 'transacao_lista' %}" class="btn btn-info text-white">
+                        <i class="bi bi-list"></i> Ver Todas
+                    </a>
+                    <a href="{% url 'relatorio_financeiro' %}" class="btn btn-success">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Relatórios
+                    </a>
+                    <a href="{% url 'categoria_financeira_lista' %}" class="btn btn-secondary">
+                        <i class="bi bi-tags"></i> Categorias
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Despesas -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-down"></i> Top 5 Despesas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if top_despesas %}
+                    {% for despesa in top_despesas %}
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between">
+                            <small>{{ despesa.categoria__nome }}</small>
+                            <small class="text-danger"><strong>R$ {{ despesa.total|floatformat:2 }}</strong></small>
+                        </div>
+                        <div class="progress" style="height: 5px;">
+                            <div class="progress-bar bg-danger" 
+                                 style="width: {% widthratio despesa.total top_despesas.0.total 100 %}%">
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">Sem despesas no mês</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

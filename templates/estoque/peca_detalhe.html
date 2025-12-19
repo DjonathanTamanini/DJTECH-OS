@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ peca.codigo_interno }} - DJTECH-OS{% endblock %}
+
+{% block page_title %}{{ peca.codigo_interno }} - {{ peca.descricao }}{% endblock %}
+{% block page_subtitle %}Detalhes da peça{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="{% url 'peca_lista' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'peca_editar' peca.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'movimentacao_criar' %}" class="btn btn-success">
+            <i class="bi bi-arrow-left-right"></i> Nova Movimentação
+        </a>
+        <a href="{% url 'peca_deletar' peca.pk %}" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Excluir
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Card de Status -->
+    <div class="col-md-3 mb-4">
+        <div class="card text-center {% if peca.estoque_baixo %}border-danger{% endif %}">
+            <div class="card-body">
+                {% if peca.estoque_baixo %}
+                    <i class="bi bi-exclamation-triangle text-danger" style="font-size: 48px;"></i>
+                    <h6 class="text-danger mt-2">ESTOQUE BAIXO</h6>
+                {% else %}
+                    <i class="bi bi-check-circle text-success" style="font-size: 48px;"></i>
+                    <h6 class="text-success mt-2">ESTOQUE OK</h6>
+                {% endif %}
+                <h2 class="mt-3 mb-1">{{ peca.quantidade_estoque }}</h2>
+                <p class="text-muted mb-0">unidades</p>
+                <small class="text-muted">Mínimo: {{ peca.estoque_minimo }}</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Informações da Peça -->
+    <div class="col-md-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Informações da Peça
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="40%"><strong>Código:</strong></td>
+                        <td>{{ peca.codigo_interno }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Descrição:</strong></td>
+                        <td>{{ peca.descricao }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Categoria:</strong></td>
+                        <td><span class="badge bg-secondary">{{ peca.categoria.nome }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Localização:</strong></td>
+                        <td>{{ peca.localizacao|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Fornecedor:</strong></td>
+                        <td>
+                            {% if peca.fornecedor_principal %}
+                                <a href="{% url 'fornecedor_detalhe' peca.fornecedor_principal.pk %}">
+                                    {{ peca.fornecedor_principal.nome_fantasia|default:peca.fornecedor_principal.razao_social }}
+                                </a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Status:</strong></td>
+                        <td>
+                            {% if peca.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Valores -->
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-currency-dollar"></i> Valores
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="50%"><strong>Preço de Custo:</strong></td>
+                        <td class="text-end">R$ {{ peca.preco_custo|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Preço de Venda:</strong></td>
+                        <td class="text-end">R$ {{ peca.preco_venda|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><hr></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Lucro Unitário:</strong></td>
+                        <td class="text-end text-success">
+                            <strong>R$ {% widthratio peca.preco_venda 1 1|floatformat:2|add:peca.preco_custo|floatformat:2|add:"-"|add:peca.preco_custo|floatformat:2 %}</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Margem:</strong></td>
+                        <td class="text-end text-primary">
+                            <strong>{% widthratio peca.preco_venda peca.preco_custo 100|add:"-100" %}%</strong>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2"><hr></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Valor em Estoque:</strong></td>
+                        <td class="text-end">
+                            <strong>R$ {% widthratio peca.quantidade_estoque 1 peca.preco_venda|floatformat:2 %}</strong>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Observações -->
+{% if peca.observacoes %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-left-text"></i> Observações
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ peca.observacoes|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Histórico de Movimentações -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Histórico de Movimentações
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if movimentacoes %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Quantidade</th>
+                                    <th>Usuário</th>
+                                    <th>Valor Unitário</th>
+                                    <th>Observações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for mov in movimentacoes %}
+                                <tr>
+                                    <td>{{ mov.data_movimentacao|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if mov.tipo == 'entrada' %}
+                                            <span class="badge bg-success">Entrada</span>
+                                        {% elif mov.tipo == 'saida' %}
+                                            <span class="badge bg-danger">Saída</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Ajuste</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if mov.tipo == 'entrada' %}
+                                            <span class="text-success">+{{ mov.quantidade }}</span>
+                                        {% elif mov.tipo == 'saida' %}
+                                            <span class="text-danger">-{{ mov.quantidade }}</span>
+                                        {% else %}
+                                            {{ mov.quantidade }}
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ mov.usuario.get_full_name|default:mov.usuario.username }}</td>
+                                    <td>R$ {{ mov.valor_unitario|default:"0.00"|floatformat:2 }}</td>
+                                    <td>{{ mov.observacoes|default:"-"|truncatewords:10 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-clock-history" style="font-size: 48px;"></i><br>
+                        Nenhuma movimentação registrada para esta peça
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

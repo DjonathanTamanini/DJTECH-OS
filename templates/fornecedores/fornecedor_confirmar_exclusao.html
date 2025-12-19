@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Fornecedor - DJTECH-OS{% endblock %}
+
+{% block page_title %}Excluir Fornecedor{% endblock %}
+{% block page_subtitle %}Confirmação de exclusão{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                
+                <p class="lead">Tem certeza que deseja excluir o fornecedor?</p>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted" width="40%"><strong>Razão Social:</strong></td>
+                            <td>{{ fornecedor.razao_social }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Nome Fantasia:</strong></td>
+                            <td>{{ fornecedor.nome_fantasia|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>CNPJ:</strong></td>
+                            <td>{{ fornecedor.cnpj }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {% if fornecedor.pecas_fornecidas.count > 0 %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Este fornecedor possui <strong>{{ fornecedor.pecas_fornecidas.count }}</strong> peça(s) cadastrada(s).
+                </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash"></i> Sim, Excluir Fornecedor
+                        </button>
+                        <a href="{% url 'fornecedor_detalhe' fornecedor.pk %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Cliente - DJTECH-OS{% endblock %}
+
+{% block page_title %}Excluir Cliente{% endblock %}
+{% block page_subtitle %}Confirmação de exclusão{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                
+                <p class="lead">Tem certeza que deseja excluir o cliente?</p>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted" width="40%"><strong>Nome:</strong></td>
+                            <td>{{ cliente.nome }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>CPF/CNPJ:</strong></td>
+                            <td>{{ cliente.cpf_cnpj }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Telefone:</strong></td>
+                            <td>{{ cliente.telefone_principal }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {% if cliente.ordens_servico.count > 0 %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Este cliente possui <strong>{{ cliente.ordens_servico.count }}</strong> ordem(ns) de serviço cadastrada(s).
+                </div>
+                {% endif %}
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash"></i> Sim, Excluir Cliente
+                        </button>
+                        <a href="{% url 'cliente_detalhe' cliente.pk %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias - DJTECH-OS{% endblock %}
+
+{% block page_title %}Categorias de Peças{% endblock %}
+{% block page_subtitle %}Gerenciar categorias do estoque{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12 text-end">
+        <a href="{% url 'categoria_criar' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nova Categoria
+        </a>
+        <a href="{% url 'peca_lista' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar ao Estoque
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    {% for categoria in categorias %}
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-tag"></i> {{ categoria.nome }}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if categoria.descricao %}
+                    <p class="text-muted">{{ categoria.descricao }}</p>
+                {% else %}
+                    <p class="text-muted">Sem descrição</p>
+                {% endif %}
+                
+                <div class="alert alert-info mb-0">
+                    <i class="bi bi-box-seam"></i>
+                    <strong>{{ categoria.pecas.count }}</strong> peça(s) nesta categoria
+                </div>
+            </div>
+            <div class="card-footer bg-white">
+                <a href="{% url 'categoria_editar' categoria.pk %}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+                <a href="{% url 'peca_lista' %}?categoria={{ categoria.id }}" class="btn btn-sm btn-info">
+                    <i class="bi bi-eye"></i> Ver Peças
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-tags" style="font-size: 64px; color: #ccc;"></i>
+                <h5 class="mt-3 text-muted">Nenhuma categoria cadastrada</h5>
+                <p class="text-muted">Crie categorias para organizar melhor seu estoque</p>
+                <a href="{% url 'categoria_criar' %}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Criar Primeira Categoria
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block title %}Clientes - DJTECH-OS{% endblock %}
+
+{% block page_title %}Clientes{% endblock %}
+{% block page_subtitle %}Gerenciar clientes cadastrados{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <form method="get" class="d-flex">
+            <input type="text" 
+                   name="busca" 
+                   class="form-control me-2" 
+                   placeholder="Buscar por nome, CPF/CNPJ, telefone ou email..."
+                   value="{{ busca }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Buscar
+            </button>
+            {% if busca %}
+            <a href="{% url 'cliente_lista' %}" class="btn btn-secondary ms-2">
+                <i class="bi bi-x"></i> Limpar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'cliente_criar' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Novo Cliente
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF/CNPJ</th>
+                        <th>Telefone</th>
+                        <th>Email</th>
+                        <th>Cidade</th>
+                        <th>Status</th>
+                        <th width="150">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td><strong>{{ cliente.nome }}</strong></td>
+                        <td>{{ cliente.cpf_cnpj }}</td>
+                        <td>{{ cliente.telefone_principal }}</td>
+                        <td>{{ cliente.email|default:"-" }}</td>
+                        <td>{{ cliente.cidade|default:"-" }}</td>
+                        <td>
+                            {% if cliente.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'cliente_detalhe' cliente.pk %}" 
+                               class="btn btn-sm btn-info btn-action" 
+                               title="Visualizar">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'cliente_editar' cliente.pk %}" 
+                               class="btn btn-sm btn-primary btn-action" 
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'cliente_deletar' cliente.pk %}" 
+                               class="btn btn-sm btn-danger btn-action" 
+                               title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            {% if busca %}
+                                <i class="bi bi-search" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhum cliente encontrado para "{{ busca }}"</p>
+                            {% else %}
+                                <i class="bi bi-people" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhum cliente cadastrado ainda</p>
+                                <a href="{% url 'cliente_criar' %}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle"></i> Cadastrar Primeiro Cliente
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

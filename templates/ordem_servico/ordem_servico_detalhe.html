@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ ordem.numero_os }} - DJTECH-OS{% endblock %}
+
+{% block page_title %}{{ ordem.numero_os }}{% endblock %}
+{% block page_subtitle %}Detalhes da ordem de serviço{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="{% url 'ordem_servico_lista' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'ordem_servico_editar' ordem.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'ordem_servico_imprimir' ordem.pk %}" class="btn btn-info" target="_blank">
+            <i class="bi bi-printer"></i> Imprimir
+        </a>
+        
+        {% if ordem.status == 'entregue' and ordem.data_fim_garantia %}
+            {% now "Y-m-d" as hoje %}
+            {% if ordem.data_fim_garantia|date:"Y-m-d" >= hoje %}
+                <span class="badge bg-success ms-2" style="font-size: 14px; padding: 10px;">
+                    <i class="bi bi-shield-check"></i> Em Garantia até {{ ordem.data_fim_garantia|date:"d/m/Y" }}
+                </span>
+            {% else %}
+                <span class="badge bg-secondary ms-2" style="font-size: 14px; padding: 10px;">
+                    <i class="bi bi-shield-x"></i> Garantia Expirada
+                </span>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+<!-- Card de Status -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-primary">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-2 text-center">
+                        <i class="bi bi-file-earmark-text" style="font-size: 64px; color: #3498db;"></i>
+                    </div>
+                    <div class="col-md-10">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6 class="text-muted">Status Atual</h6>
+                                <h4>
+                                    {% if ordem.status == 'recepcao' %}
+                                        <span class="badge bg-secondary">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'avaliacao' %}
+                                        <span class="badge bg-info">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'aguardando_aprovacao' %}
+                                        <span class="badge bg-warning text-dark">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'aprovado' %}
+                                        <span class="badge bg-primary">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'em_reparo' %}
+                                        <span class="badge" style="background-color: #fd7e14;">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'concluido' %}
+                                        <span class="badge bg-success">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'entregue' %}
+                                        <span class="badge" style="background-color: #20c997;">{{ ordem.get_status_display }}</span>
+                                    {% elif ordem.status == 'cancelado' %}
+                                        <span class="badge bg-danger">{{ ordem.get_status_display }}</span>
+                                    {% endif %}
+                                </h4>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted">Data de Entrada</h6>
+                                <h4>{{ ordem.data_entrada|date:"d/m/Y" }}</h4>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted">Prazo Estimado</h6>
+                                <h4>
+                                    {% if ordem.prazo_estimado %}
+                                        {{ ordem.prazo_estimado|date:"d/m/Y" }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </h4>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="text-muted">Valor Total</h6>
+                                <h4 class="text-success">R$ {{ ordem.valor_total|floatformat:2 }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Cliente e Equipamento -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-person"></i> Cliente
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="40%"><strong>Nome:</strong></td>
+                        <td>
+                            <a href="{% url 'cliente_detalhe' ordem.cliente.pk %}">
+                                {{ ordem.cliente.nome }}
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Telefone:</strong></td>
+                        <td>{{ ordem.cliente.telefone_principal }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Email:</strong></td>
+                        <td>{{ ordem.cliente.email|default:"-" }}</td>
+                    </tr>
+                </table>
+                
+                <hr>
+                
+                <h6><i class="bi bi-laptop"></i> Equipamento</h6>
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="40%"><strong>Tipo:</strong></td>
+                        <td>{{ ordem.get_tipo_equipamento_display }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Marca:</strong></td>
+                        <td>{{ ordem.marca }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Modelo:</strong></td>
+                        <td>{{ ordem.modelo }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Nº Série:</strong></td>
+                        <td>{{ ordem.numero_serie|default:"-" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Defeitos -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-circle"></i> Defeitos
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted">Defeito Relatado pelo Cliente:</h6>
+                <div class="alert alert-warning">
+                    {{ ordem.defeito_relatado|linebreaks }}
+                </div>
+                
+                {% if ordem.defeito_encontrado %}
+                <h6 class="text-muted mt-3">Defeito Encontrado (Diagnóstico):</h6>
+                <div class="alert alert-info">
+                    {{ ordem.defeito_encontrado|linebreaks }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Peças Utilizadas -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-box-seam"></i> Peças Utilizadas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pecas_utilizadas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Quantidade</th>
+                                    <th>Valor Unitário</th>
+                                    <th>Valor Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for peca_util in pecas_utilizadas %}
+                                <tr>
+                                    <td>{{ peca_util.peca.codigo_interno }}</td>
+                                    <td>{{ peca_util.peca.descricao }}</td>
+                                    <td>{{ peca_util.quantidade }}</td>
+                                    <td>R$ {{ peca_util.valor_unitario|floatformat:2 }}</td>
+                                    <td>R$ {{ peca_util.valor_total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Total Peças:</strong></td>
+                                    <td><strong>R$ {{ ordem.valor_pecas|floatformat:2 }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-box-seam" style="font-size: 48px;"></i><br>
+                        Nenhuma peça utilizada nesta OS
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Valores e Responsáveis -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-currency-dollar"></i> Valores
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="50%"><strong>Mão de Obra:</strong></td>
+                        <td class="text-end">R$ {{ ordem.valor_mao_obra|floatformat:2 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Peças:</strong></td>
+                        <td class="text-end">R$ {{ ordem.valor_pecas|floatformat:2 }}</td>
+                    </tr>
+                    {% if ordem.desconto > 0 %}
+                    <tr>
+                        <td class="text-muted"><strong>Desconto:</strong></td>
+                        <td class="text-end text-danger">- R$ {{ ordem.desconto|floatformat:2 }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr>
+                        <td colspan="2"><hr></td>
+                    </tr>
+                    <tr>
+                        <td><strong>TOTAL:</strong></td>
+                        <td class="text-end"><h4 class="text-success mb-0">R$ {{ ordem.valor_total|floatformat:2 }}</h4></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Responsáveis
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="40%"><strong>Atendente:</strong></td>
+                        <td>{{ ordem.atendente.get_full_name|default:ordem.atendente.username }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Técnico:</strong></td>
+                        <td>
+                            {% if ordem.tecnico %}
+                                {{ ordem.tecnico.get_full_name|default:ordem.tecnico.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Garantia:</strong></td>
+                        <td>{{ ordem.dias_garantia }} dias</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Observações -->
+{% if ordem.observacoes_internas or ordem.observacoes_cliente %}
+<div class="row mb-4">
+    {% if ordem.observacoes_internas %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lock"></i> Observações Internas
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ ordem.observacoes_internas|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if ordem.observacoes_cliente %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-left-text"></i> Observações para o Cliente
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ ordem.observacoes_cliente|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Histórico -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Histórico de Status
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if historico %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data/Hora</th>
+                                    <th>Status Anterior</th>
+                                    <th>Status Novo</th>
+                                    <th>Usuário</th>
+                                    <th>Observação</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hist in historico %}
+                                <tr>
+                                    <td>{{ hist.data_alteracao|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            {{ hist.get_status_anterior_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            {{ hist.get_status_novo_display }}
+                                        </span>
+                                    </td>
+                                    <td>{{ hist.usuario.get_full_name|default:hist.usuario.username }}</td>
+                                    <td>{{ hist.observacao|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-clock-history" style="font-size: 48px;"></i><br>
+                        Nenhuma mudança de status registrada ainda
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

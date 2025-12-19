@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Fornecedores - DJTECH-OS{% endblock %}
+
+{% block page_title %}Fornecedores{% endblock %}
+{% block page_subtitle %}Gerenciar fornecedores de peças{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-8">
+        <form method="get" class="d-flex">
+            <input type="text" 
+                   name="busca" 
+                   class="form-control me-2" 
+                   placeholder="Buscar por razão social, nome fantasia, CNPJ ou telefone..."
+                   value="{{ busca }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Buscar
+            </button>
+            {% if busca %}
+            <a href="{% url 'fornecedor_lista' %}" class="btn btn-secondary ms-2">
+                <i class="bi bi-x"></i> Limpar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{% url 'fornecedor_criar' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Novo Fornecedor
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Razão Social / Nome Fantasia</th>
+                        <th>CNPJ</th>
+                        <th>Telefone</th>
+                        <th>Cidade</th>
+                        <th>Status</th>
+                        <th width="150">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fornecedor in fornecedores %}
+                    <tr>
+                        <td>
+                            <strong>{{ fornecedor.razao_social }}</strong>
+                            {% if fornecedor.nome_fantasia %}
+                                <br><small class="text-muted">{{ fornecedor.nome_fantasia }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ fornecedor.cnpj }}</td>
+                        <td>{{ fornecedor.telefone }}</td>
+                        <td>{{ fornecedor.cidade|default:"-" }}</td>
+                        <td>
+                            {% if fornecedor.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'fornecedor_detalhe' fornecedor.pk %}" 
+                               class="btn btn-sm btn-info btn-action" 
+                               title="Visualizar">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'fornecedor_editar' fornecedor.pk %}" 
+                               class="btn btn-sm btn-primary btn-action" 
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'fornecedor_deletar' fornecedor.pk %}" 
+                               class="btn btn-sm btn-danger btn-action" 
+                               title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            {% if busca %}
+                                <i class="bi bi-search" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhum fornecedor encontrado para "{{ busca }}"</p>
+                            {% else %}
+                                <i class="bi bi-truck" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhum fornecedor cadastrado ainda</p>
+                                <a href="{% url 'fornecedor_criar' %}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle"></i> Cadastrar Primeiro Fornecedor
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ fornecedor.razao_social }} - DJTECH-OS{% endblock %}
+
+{% block page_title %}{{ fornecedor.nome_fantasia|default:fornecedor.razao_social }}{% endblock %}
+{% block page_subtitle %}Detalhes do fornecedor{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12">
+        <a href="{% url 'fornecedor_lista' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+        <a href="{% url 'fornecedor_editar' fornecedor.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i> Editar
+        </a>
+        <a href="{% url 'fornecedor_deletar' fornecedor.pk %}" class="btn btn-danger">
+            <i class="bi bi-trash"></i> Excluir
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Informações do Fornecedor -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-building"></i> Informações da Empresa
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="text-muted" width="40%"><strong>Razão Social:</strong></td>
+                        <td>{{ fornecedor.razao_social }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Nome Fantasia:</strong></td>
+                        <td>{{ fornecedor.nome_fantasia|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>CNPJ:</strong></td>
+                        <td>{{ fornecedor.cnpj }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Telefone:</strong></td>
+                        <td>{{ fornecedor.telefone }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Email:</strong></td>
+                        <td>{{ fornecedor.email|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Contato Responsável:</strong></td>
+                        <td>{{ fornecedor.contato_responsavel|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Status:</strong></td>
+                        <td>
+                            {% if fornecedor.ativo %}
+                                <span class="badge bg-success">Ativo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inativo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted"><strong>Cadastrado em:</strong></td>
+                        <td>{{ fornecedor.data_cadastro|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Endereço -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-geo-alt"></i> Endereço
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if fornecedor.cep %}
+                    <table class="table table-borderless">
+                        <tr>
+                            <td class="text-muted" width="40%"><strong>CEP:</strong></td>
+                            <td>{{ fornecedor.cep }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Logradouro:</strong></td>
+                            <td>{{ fornecedor.logradouro|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Número:</strong></td>
+                            <td>{{ fornecedor.numero|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Complemento:</strong></td>
+                            <td>{{ fornecedor.complemento|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Bairro:</strong></td>
+                            <td>{{ fornecedor.bairro|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Cidade/UF:</strong></td>
+                            <td>{{ fornecedor.cidade|default:"-" }} - {{ fornecedor.estado|default:"-" }}</td>
+                        </tr>
+                    </table>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-geo-alt" style="font-size: 48px;"></i><br>
+                        Endereço não cadastrado
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Informações Comerciais -->
+{% if fornecedor.condicoes_pagamento or fornecedor.observacoes %}
+<div class="row mb-4">
+    {% if fornecedor.condicoes_pagamento %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-cash-coin"></i> Condições de Pagamento
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ fornecedor.condicoes_pagamento|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if fornecedor.observacoes %}
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-chat-left-text"></i> Observações
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ fornecedor.observacoes|linebreaks }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Peças Fornecidas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-box-seam"></i> Peças Fornecidas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pecas %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descrição</th>
+                                    <th>Categoria</th>
+                                    <th>Estoque</th>
+                                    <th>Preço Custo</th>
+                                    <th>Preço Venda</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for peca in pecas %}
+                                <tr>
+                                    <td><strong>{{ peca.codigo_interno }}</strong></td>
+                                    <td>{{ peca.descricao }}</td>
+                                    <td>{{ peca.categoria.nome }}</td>
+                                    <td>{{ peca.quantidade_estoque }}</td>
+                                    <td>R$ {{ peca.preco_custo|floatformat:2 }}</td>
+                                    <td>R$ {{ peca.preco_venda|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        <i class="bi bi-box-seam" style="font-size: 48px;"></i><br>
+                        Nenhuma peça vinculada a este fornecedor
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - DJTECH-OS{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Visão geral do sistema{% endblock %}
+
+{% block content %}
+<!-- Cards de Estatísticas - AGORA COM LINKS -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <a href="{% url 'ordem_servico_lista' %}?status_excluir=entregue,cancelado" class="text-decoration-none">
+            <div class="card stat-card" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">OS Abertas</h6>
+                        <h2 class="mb-0">{{ total_os_abertas }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-file-earmark-text" style="font-size: 40px; color: #3498db;"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-3">
+        <a href="{% url 'ordem_servico_lista' %}?status=aguardando_aprovacao" class="text-decoration-none">
+            <div class="card stat-card warning" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Aguardando Aprovação</h6>
+                        <h2 class="mb-0">{{ os_aguardando_aprovacao }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-hourglass-split" style="font-size: 40px; color: #f39c12;"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-3">
+        <a href="{% url 'ordem_servico_lista' %}?status=em_reparo" class="text-decoration-none">
+            <div class="card stat-card success" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Em Reparo</h6>
+                        <h2 class="mb-0">{{ os_em_reparo }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-tools" style="font-size: 40px; color: #27ae60;"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    
+    <div class="col-md-3">
+        <a href="{% url 'ordem_servico_lista' %}?atrasadas=1" class="text-decoration-none">
+            <div class="card stat-card danger" style="cursor: pointer;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">Atrasadas</h6>
+                        <h2 class="mb-0">{{ os_atrasadas }}</h2>
+                    </div>
+                    <div>
+                        <i class="bi bi-exclamation-triangle" style="font-size: 40px; color: #e74c3c;"></i>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Últimas Ordens de Serviço - COM LINKS -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Últimas Ordens de Serviço
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>OS</th>
+                                <th>Cliente</th>
+                                <th>Equipamento</th>
+                                <th>Status</th>
+                                <th>Data Entrada</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for os in ultimas_os %}
+                            <tr style="cursor: pointer;" onclick="window.location='{% url 'ordem_servico_detalhe' os.pk %}'">
+                                <td><strong>{{ os.numero_os }}</strong></td>
+                                <td>{{ os.cliente.nome }}</td>
+                                <td>{{ os.get_tipo_equipamento_display }}</td>
+                                <td>
+                                    <span class="badge badge-status bg-primary">
+                                        {{ os.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ os.data_entrada|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">
+                                    Nenhuma ordem de serviço cadastrada
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Alertas - PERMANENTES E COM LINKS -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-bell"></i> Alertas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if pecas_estoque_baixo > 0 %}
+                <a href="{% url 'peca_lista' %}?estoque_baixo=1" class="text-decoration-none">
+                    <div class="alert alert-warning alert-permanent" style="cursor: pointer;">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <strong>{{ pecas_estoque_baixo }}</strong> peça(s) com estoque baixo
+                        <i class="bi bi-arrow-right float-end"></i>
+                    </div>
+                </a>
+                {% endif %}
+                
+                {% if os_atrasadas > 0 %}
+                <a href="{% url 'ordem_servico_lista' %}?atrasadas=1" class="text-decoration-none">
+                    <div class="alert alert-danger alert-permanent" style="cursor: pointer;">
+                        <i class="bi bi-clock"></i>
+                        <strong>{{ os_atrasadas }}</strong> OS atrasada(s)
+                        <i class="bi bi-arrow-right float-end"></i>
+                    </div>
+                </a>
+                {% endif %}
+                
+                <a href="{% url 'ordem_servico_lista' %}" class="text-decoration-none">
+                    <div class="alert alert-info alert-permanent" style="cursor: pointer;">
+                        <i class="bi bi-graph-up"></i>
+                        <strong>{{ os_mes }}</strong> OS aberta(s) este mês
+                        <i class="bi bi-arrow-right float-end"></i>
+                    </div>
+                </a>
+                
+                {% if not pecas_estoque_baixo and not os_atrasadas %}
+                <div class="alert alert-success alert-permanent">
+                    <i class="bi bi-check-circle"></i>
+                    Tudo em ordem! Nenhum alerta no momento.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Ações Rápidas - COM LINKS -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-lightning"></i> Ações Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'ordem_servico_criar' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Nova OS
+                    </a>
+                    <a href="{% url 'cliente_criar' %}" class="btn btn-success">
+                        <i class="bi bi-person-plus"></i> Novo Cliente
+                    </a>
+                    <a href="{% url 'peca_criar' %}" class="btn btn-info text-white">
+                        <i class="bi bi-box"></i> Adicionar Peça
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

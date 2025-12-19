@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+
+{% block title %}Estoque - DJTECH-OS{% endblock %}
+
+{% block page_title %}Estoque de Peças{% endblock %}
+{% block page_subtitle %}Gerenciar peças e componentes{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-10">
+        <form method="get" class="row g-2">
+            <div class="col-md-5">
+                <input type="text" 
+                       name="busca" 
+                       class="form-control" 
+                       placeholder="Buscar por código ou descrição..."
+                       value="{{ busca }}">
+            </div>
+            <div class="col-md-3">
+                <select name="categoria" class="form-select">
+                    <option value="">Todas as categorias</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat.id }}" {% if categoria_selecionada == cat.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cat.nome }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <div class="form-check mt-2">
+                    <input class="form-check-input" type="checkbox" name="estoque_baixo" id="estoque_baixo" 
+                           value="1" {% if estoque_baixo %}checked{% endif %}>
+                    <label class="form-check-label" for="estoque_baixo">
+                        Estoque baixo
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="bi bi-search"></i> Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-2 text-end">
+        <div class="dropdown">
+            <button class="btn btn-success dropdown-toggle w-100" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-plus-circle"></i> Novo
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'peca_criar' %}">
+                    <i class="bi bi-box"></i> Nova Peça
+                </a></li>
+                <li><a class="dropdown-item" href="{% url 'movimentacao_criar' %}">
+                    <i class="bi bi-arrow-left-right"></i> Movimentação
+                </a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{% url 'categoria_lista' %}">
+                    <i class="bi bi-tags"></i> Gerenciar Categorias
+                </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Estoque</th>
+                        <th>Localização</th>
+                        <th>Preço Venda</th>
+                        <th>Fornecedor</th>
+                        <th width="150">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for peca in pecas %}
+                    <tr>
+                        <td><strong>{{ peca.codigo_interno }}</strong></td>
+                        <td>{{ peca.descricao }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ peca.categoria.nome }}</span>
+                        </td>
+                        <td>
+                            {% if peca.estoque_baixo %}
+                                <span class="text-danger fw-bold">
+                                    <i class="bi bi-exclamation-triangle"></i> {{ peca.quantidade_estoque }}
+                                </span>
+                            {% else %}
+                                <span class="text-success fw-bold">{{ peca.quantidade_estoque }}</span>
+                            {% endif %}
+                            <small class="text-muted">/ {{ peca.estoque_minimo }}</small>
+                        </td>
+                        <td>{{ peca.localizacao|default:"-" }}</td>
+                        <td>R$ {{ peca.preco_venda|floatformat:2 }}</td>
+                        <td>
+                            {% if peca.fornecedor_principal %}
+                                <small>{{ peca.fornecedor_principal.nome_fantasia|default:peca.fornecedor_principal.razao_social|truncatewords:3 }}</small>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'peca_detalhe' peca.pk %}" 
+                               class="btn btn-sm btn-info btn-action" 
+                               title="Visualizar">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <a href="{% url 'peca_editar' peca.pk %}" 
+                               class="btn btn-sm btn-primary btn-action" 
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'peca_deletar' peca.pk %}" 
+                               class="btn btn-sm btn-danger btn-action" 
+                               title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            {% if busca or categoria_selecionada or estoque_baixo %}
+                                <i class="bi bi-search" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhuma peça encontrada com os filtros selecionados</p>
+                            {% else %}
+                                <i class="bi bi-box-seam" style="font-size: 48px;"></i>
+                                <p class="mt-3">Nenhuma peça cadastrada ainda</p>
+                                <a href="{% url 'peca_criar' %}" class="btn btn-success">
+                                    <i class="bi bi-plus-circle"></i> Cadastrar Primeira Peça
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

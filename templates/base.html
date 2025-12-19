@@ -1,0 +1,127 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}DJTECH-OS{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- CSS Customizado -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 px-0 sidebar">
+                <div class="logo-area">
+                    <i class="bi bi-tools" style="font-size: 40px; color: white;"></i>
+                    <h3>DJTECH-OS</h3>
+                    <small>Assistência Técnica</small>
+                </div>
+                
+                <nav class="nav flex-column">
+                    <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                       href="{% url 'dashboard' %}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    
+                    <a class="nav-link {% if 'ordem_servico' in request.path or 'ordem-servico' in request.path %}active{% endif %}" 
+                       href="{% url 'ordem_servico_lista' %}">
+                        <i class="bi bi-file-earmark-text"></i> Ordens de Serviço
+                    </a>
+                    
+                    <a class="nav-link {% if 'clientes' in request.path %}active{% endif %}" 
+                       href="{% url 'cliente_lista' %}">
+                        <i class="bi bi-people"></i> Clientes
+                    </a>
+                    
+                    <a class="nav-link {% if 'estoque' in request.path %}active{% endif %}" 
+                       href="{% url 'peca_lista' %}">
+                        <i class="bi bi-box-seam"></i> Estoque
+                    </a>
+                    
+                    <a class="nav-link {% if 'fornecedores' in request.path %}active{% endif %}" 
+                       href="{% url 'fornecedor_lista' %}">
+                        <i class="bi bi-truck"></i> Fornecedores
+                    </a>
+                    
+                    <a class="nav-link {% if 'financeiro' in request.path %}active{% endif %}" 
+                       href="{% url 'financeiro_dashboard' %}">
+                        <i class="bi bi-cash-coin"></i> Financeiro
+                    </a>
+                    
+                    <hr style="border-color: rgba(255,255,255,0.2); margin: 20px 15px;">
+                    
+                    <a class="nav-link" href="/admin/" target="_blank">
+                        <i class="bi bi-gear"></i> Admin Django
+                    </a>
+                    
+                    <a class="nav-link" href="{% url 'logout' %}">
+                        <i class="bi bi-box-arrow-right"></i> Sair
+                    </a>
+                </nav>
+                                                
+                <div class="user-info">
+                    <div class="user-info-card">
+                        <i class="bi bi-person-circle"></i>
+                        <p>
+                            <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+                            <small>{{ user.email }}</small>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-md-10 main-content">
+                <!-- Top Navbar -->
+                <div class="top-navbar">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="mb-0">{% block page_title %}Dashboard{% endblock %}</h4>
+                            <small class="text-muted">{% block page_subtitle %}Bem-vindo ao sistema{% endblock %}</small>
+                        </div>
+                        <div>
+                            <span class="text-muted">
+                                <i class="bi bi-calendar3"></i> 
+                                <span id="current-date"></span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Messages -->
+                {% if messages %}
+                    <div class="container-fluid px-4">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+                <!-- Page Content -->
+                <div class="container-fluid px-4 pb-4">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JS Customizado -->
+    <script src="{% static 'js/main.js' %}"></script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

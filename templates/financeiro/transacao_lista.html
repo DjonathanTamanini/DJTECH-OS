@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+
+{% block title %}Transações - DJTECH-OS{% endblock %}
+
+{% block page_title %}Transações Financeiras{% endblock %}
+{% block page_subtitle %}Gerenciar receitas e despesas{% endblock %}
+
+{% block content %}
+<!-- Resumo -->
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h6>Total Receitas (Pagas)</h6>
+                <h3>R$ {{ total_receitas|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h6>Total Despesas (Pagas)</h6>
+                <h3>R$ {{ total_despesas|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card {% if saldo >= 0 %}bg-primary{% else %}bg-warning{% endif %} text-white">
+            <div class="card-body">
+                <h6>Saldo</h6>
+                <h3>R$ {{ saldo|floatformat:2 }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-2">
+                    <div class="col-md-3">
+                        <select name="tipo" class="form-select">
+                            <option value="">Todos os Tipos</option>
+                            <option value="receita" {% if tipo_filtro == 'receita' %}selected{% endif %}>Receitas</option>
+                            <option value="despesa" {% if tipo_filtro == 'despesa' %}selected{% endif %}>Despesas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="status" class="form-select">
+                            <option value="">Todos os Status</option>
+                            <option value="pendente" {% if status_filtro == 'pendente' %}selected{% endif %}>Pendente</option>
+                            <option value="pago" {% if status_filtro == 'pago' %}selected{% endif %}>Pago</option>
+                            <option value="cancelado" {% if status_filtro == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="categoria" class="form-select">
+                            <option value="">Todas as Categorias</option>
+                            {% for cat in categorias %}
+                                <option value="{{ cat.id }}" {% if categoria_filtro == cat.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ cat.nome }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Filtrar
+                        </button>
+                    </div>
+                    <div class="col-md-1">
+                        <a href="{% url 'transacao_criar' %}" class="btn btn-success w-100">
+                            <i class="bi bi-plus"></i>
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de Transações -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Vencimento</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                        <th>Pagamento</th>
+                        <th width="150">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transacao in transacoes %}
+                    <tr class="{% if transacao.esta_vencida %}table-danger{% endif %}">
+                        <td>
+                            {{ transacao.data_vencimento|date:"d/m/Y" }}
+                            {% if transacao.esta_vencida %}
+                                <br><span class="badge bg-danger">Vencida</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {{ transacao.descricao }}
+                            {% if transacao.ordem_servico %}
+                                <br><small class="text-muted">
+                                    <i class="bi bi-link"></i> {{ transacao.ordem_servico.numero_os }}
+                                </small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge" style="background-color: {{ transacao.categoria.cor }};">
+                                {{ transacao.categoria.nome }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if transacao.tipo == 'receita' %}
+                                <span class="badge bg-success">Receita</span>
+                            {% else %}
+                                <span class="badge bg-danger">Despesa</span>
+                            {% endif %}
+                        </td>
+                        <td class="{% if transacao.tipo == 'receita' %}text-success{% else %}text-danger{% endif %}">
+                            <strong>R$ {{ transacao.valor|floatformat:2 }}</strong>
+                        </td>
+                        <td>
+                            {% if transacao.status == 'pago' %}
+                                <span class="badge bg-success">Pago</span>
+                            {% elif transacao.status == 'cancelado' %}
+                                <span class="badge bg-secondary">Cancelado</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transacao.data_pagamento %}
+                                {{ transacao.data_pagamento|date:"d/m/Y" }}
+                                {% if transacao.forma_pagamento %}
+                                    <br><small class="text-muted">{{ transacao.get_forma_pagamento_display }}</small>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transacao.status == 'pendente' %}
+                                <a href="{% url 'transacao_pagar' transacao.pk %}" 
+                                   class="btn btn-sm btn-success btn-action" 
+                                   title="Marcar como Pago">
+                                    <i class="bi bi-check-circle"></i>
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'transacao_editar' transacao.pk %}" 
+                               class="btn btn-sm btn-primary btn-action" 
+                               title="Editar">
+                                <i class="bi bi-pencil"></i>
+                            </a>
+                            <a href="{% url 'transacao_deletar' transacao.pk %}" 
+                               class="btn btn-sm btn-danger btn-action" 
+                               title="Excluir">
+                                <i class="bi bi-trash"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-4">
+                            <i class="bi bi-cash-coin" style="font-size: 48px;"></i>
+                            <p class="mt-3">Nenhuma transação encontrada</p>
+                            <a href="{% url 'transacao_criar' %}" class="btn btn-success">
+                                <i class="bi bi-plus-circle"></i> Cadastrar Primeira Transação
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

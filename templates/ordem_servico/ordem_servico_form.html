@@ -1,0 +1,585 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - DJTECH-OS{% endblock %}
+
+{% block page_title %}{{ titulo }}{% endblock %}
+{% block page_subtitle %}
+    {% if ordem %}Editar ordem de serviço{% else %}Criar nova ordem de serviço{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <form method="post" novalidate id="osForm">
+            {% csrf_token %}
+            
+            <!-- Cliente e Equipamento -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person"></i> Cliente e Equipamento
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">
+                                Cliente *
+                            </label>
+                            
+                            <!-- Campo de busca -->
+                            <div class="input-group mb-2" id="campo-busca-cliente">
+                                <span class="input-group-text">
+                                    <i class="bi bi-search"></i>
+                                </span>
+                                <input type="text" 
+                                       id="busca-cliente" 
+                                       class="form-control" 
+                                       placeholder="Digite o nome ou CPF/CNPJ do cliente..."
+                                       autocomplete="off">
+                            </div>
+                            
+                            <!-- Resultados da busca -->
+                            <div id="resultados-busca" class="list-group mb-2" style="display: none; max-height: 300px; overflow-y: auto;"></div>
+                            
+                            <!-- Cliente selecionado -->
+                            <div id="cliente-selecionado" style="display: none;">
+                                <div class="card border-success" style="background-color: #d1ecf1;">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <h6 class="mb-1">
+                                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                                    <strong>Cliente Selecionado:</strong>
+                                                </h6>
+                                                <h5 id="cliente-nome" class="mb-2 text-primary"></h5>
+                                                <p class="mb-0">
+                                                    <small id="cliente-info" class="text-muted"></small>
+                                                </p>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-danger" id="limpar-cliente">
+                                                <i class="bi bi-x"></i> Alterar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Campo hidden com ID do cliente -->
+                            <input type="hidden" name="cliente" id="id_cliente" required>
+                            
+                            <small class="text-muted">
+                                <a href="{% url 'cliente_criar' %}" target="_blank">
+                                    <i class="bi bi-plus-circle"></i> Cadastrar novo cliente
+                                </a>
+                            </small>
+                            
+                            <div id="erro-cliente" class="text-danger small mt-2" style="display: none;">
+                                <i class="bi bi-exclamation-triangle"></i> Por favor, selecione um cliente
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.tipo_equipamento.id_for_label }}" class="form-label">
+                                Tipo de Equipamento *
+                            </label>
+                            {{ form.tipo_equipamento }}
+                            {% if form.tipo_equipamento.errors %}
+                                <div class="text-danger small">{{ form.tipo_equipamento.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.marca.id_for_label }}" class="form-label">
+                                Marca *
+                            </label>
+                            {{ form.marca }}
+                            {% if form.marca.errors %}
+                                <div class="text-danger small">{{ form.marca.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.modelo.id_for_label }}" class="form-label">
+                                Modelo *
+                            </label>
+                            {{ form.modelo }}
+                            {% if form.modelo.errors %}
+                                <div class="text-danger small">{{ form.modelo.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.numero_serie.id_for_label }}" class="form-label">
+                                Número de Série
+                            </label>
+                            {{ form.numero_serie }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Defeitos -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-circle"></i> Defeitos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.defeito_relatado.id_for_label }}" class="form-label">
+                                Defeito Relatado pelo Cliente *
+                            </label>
+                            {{ form.defeito_relatado }}
+                            {% if form.defeito_relatado.errors %}
+                                <div class="text-danger small">{{ form.defeito_relatado.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.defeito_encontrado.id_for_label }}" class="form-label">
+                                Defeito Encontrado (Diagnóstico Técnico)
+                            </label>
+                            {{ form.defeito_encontrado }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Status e Prazos -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-clock"></i> Status e Prazos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.status.id_for_label }}" class="form-label">
+                                Status *
+                            </label>
+                            {{ form.status }}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.prazo_estimado.id_for_label }}" class="form-label">
+                                Prazo Estimado
+                            </label>
+                            {{ form.prazo_estimado }}
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.tecnico.id_for_label }}" class="form-label">
+                                Técnico Responsável
+                            </label>
+                            {{ form.tecnico }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Peças Utilizadas -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-box-seam"></i> Peças Utilizadas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {{ formset.management_form }}
+                    
+                    <div id="pecas-formset">
+                        {% for form_peca in formset %}
+                            <div class="peca-form row mb-2 border-bottom pb-2">
+                                {{ form_peca.id }}
+                                <div class="col-md-5">
+                                    <label class="form-label">Peça</label>
+                                    {{ form_peca.peca }}
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Quantidade</label>
+                                    {{ form_peca.quantidade }}
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Valor Unitário</label>
+                                    {{ form_peca.valor_unitario }}
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Remover</label><br>
+                                    {{ form_peca.DELETE }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <button type="button" class="btn btn-sm btn-secondary mt-2" id="add-peca">
+                        <i class="bi bi-plus"></i> Adicionar Peça
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Valores -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-currency-dollar"></i> Valores
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.valor_mao_obra.id_for_label }}" class="form-label">
+                                Valor Mão de Obra
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                {{ form.valor_mao_obra }}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.valor_pecas.id_for_label }}" class="form-label">
+                                Valor das Peças
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                {{ form.valor_pecas }}
+                            </div>
+                            <small class="text-muted">Calculado automaticamente</small>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label for="{{ form.desconto.id_for_label }}" class="form-label">
+                                Desconto
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">R$</span>
+                                {{ form.desconto }}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Valor Total</label>
+                            <div class="alert alert-success mb-0">
+                                <h4 class="mb-0" id="valor-total">R$ 0,00</h4>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="{{ form.dias_garantia.id_for_label }}" class="form-label">
+                                Dias de Garantia
+                            </label>
+                            {{ form.dias_garantia }}
+                            <small class="text-muted">Padrão: 90 dias</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Observações -->
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-chat-left-text"></i> Observações
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.observacoes_internas.id_for_label }}" class="form-label">
+                                Observações Internas
+                            </label>
+                            {{ form.observacoes_internas }}
+                            <small class="text-muted">Não visível ao cliente</small>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.observacoes_cliente.id_for_label }}" class="form-label">
+                                Observações para o Cliente
+                            </label>
+                            {{ form.observacoes_cliente }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botões -->
+            <div class="card">
+                <div class="card-body">
+                    <button type="submit" class="btn btn-success btn-lg">
+                        <i class="bi bi-check-circle"></i> Salvar Ordem de Serviço
+                    </button>
+                    <a href="{% url 'ordem_servico_lista' %}" class="btn btn-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> Cancelar
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========== BUSCA DE CLIENTE ==========
+let timeoutBusca;
+const inputBusca = document.getElementById('busca-cliente');
+const resultadosBusca = document.getElementById('resultados-busca');
+const clienteSelecionado = document.getElementById('cliente-selecionado');
+const inputClienteId = document.getElementById('id_cliente');
+
+// Se estiver editando, carregar cliente atual
+{% if ordem %}
+    if (inputClienteId) {
+        inputClienteId.value = '{{ ordem.cliente.id }}';
+    }
+    const clienteNome = document.getElementById('cliente-nome');
+    if (clienteNome) {
+        clienteNome.textContent = '{{ ordem.cliente.nome }}';
+    }
+    const clienteInfo = document.getElementById('cliente-info');
+    if (clienteInfo) {
+        clienteInfo.textContent = '{{ ordem.cliente.cpf_cnpj }} - {{ ordem.cliente.telefone_principal }}';
+    }
+    if (clienteSelecionado) {
+        clienteSelecionado.style.display = 'block';
+    }
+    const campoBusca = document.getElementById('campo-busca-cliente');
+    if (campoBusca) {
+        campoBusca.style.display = 'none';
+    }
+{% endif %}
+
+if (inputBusca) {
+    inputBusca.addEventListener('input', function() {
+        clearTimeout(timeoutBusca);
+        const termo = this.value.trim();
+        
+        if (termo.length < 2) {
+            resultadosBusca.style.display = 'none';
+            return;
+        }
+        
+        timeoutBusca = setTimeout(() => {
+            buscarClientes(termo);
+        }, 300);
+    });
+}
+
+function buscarClientes(termo) {
+    fetch(`/ordem-servico/buscar-clientes/?termo=${encodeURIComponent(termo)}`)
+        .then(response => response.json())
+        .then(data => {
+            mostrarResultados(data.clientes);
+        })
+        .catch(error => {
+            console.error('Erro ao buscar clientes:', error);
+        });
+}
+
+function mostrarResultados(clientes) {
+    if (!resultadosBusca) return;
+    
+    resultadosBusca.innerHTML = '';
+    
+    if (clientes.length === 0) {
+        resultadosBusca.innerHTML = `
+            <div class="list-group-item text-muted">
+                <i class="bi bi-search"></i> Nenhum cliente encontrado
+            </div>
+        `;
+        resultadosBusca.style.display = 'block';
+        return;
+    }
+    
+    clientes.forEach(cliente => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action';
+        item.style.cursor = 'pointer';
+        item.innerHTML = `
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1">${cliente.nome}</h6>
+            </div>
+            <small class="text-muted">
+                <i class="bi bi-person-badge"></i> ${cliente.cpf_cnpj} | 
+                <i class="bi bi-telephone"></i> ${cliente.telefone_principal}
+            </small>
+        `;
+        
+        item.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            selecionarCliente(cliente);
+        };
+        
+        resultadosBusca.appendChild(item);
+    });
+    
+    resultadosBusca.style.display = 'block';
+}
+
+function selecionarCliente(cliente) {
+    console.log('Cliente selecionado:', cliente);
+    
+    if (inputClienteId) {
+        inputClienteId.value = cliente.id;
+    }
+    
+    const clienteNome = document.getElementById('cliente-nome');
+    if (clienteNome) {
+        clienteNome.textContent = cliente.nome;
+    }
+    
+    const clienteInfo = document.getElementById('cliente-info');
+    if (clienteInfo) {
+        clienteInfo.textContent = `${cliente.cpf_cnpj} - ${cliente.telefone_principal}`;
+    }
+    
+    const campoBusca = document.getElementById('campo-busca-cliente');
+    if (campoBusca) {
+        campoBusca.style.display = 'none';
+    }
+    
+    if (resultadosBusca) {
+        resultadosBusca.style.display = 'none';
+    }
+    
+    if (clienteSelecionado) {
+        clienteSelecionado.style.display = 'block';
+    }
+    
+    if (inputBusca) {
+        inputBusca.value = '';
+    }
+    
+    const erroCliente = document.getElementById('erro-cliente');
+    if (erroCliente) {
+        erroCliente.style.display = 'none';
+    }
+    
+    console.log('Cliente ID definido:', inputClienteId ? inputClienteId.value : 'erro');
+}
+
+const btnLimparCliente = document.getElementById('limpar-cliente');
+if (btnLimparCliente) {
+    btnLimparCliente.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        if (inputClienteId) {
+            inputClienteId.value = '';
+        }
+        
+        if (clienteSelecionado) {
+            clienteSelecionado.style.display = 'none';
+        }
+        
+        const campoBusca = document.getElementById('campo-busca-cliente');
+        if (campoBusca) {
+            campoBusca.style.display = 'flex';
+        }
+        
+        if (inputBusca) {
+            inputBusca.focus();
+        }
+    });
+}
+
+document.addEventListener('click', function(e) {
+    if (inputBusca && resultadosBusca && 
+        !inputBusca.contains(e.target) && !resultadosBusca.contains(e.target)) {
+        resultadosBusca.style.display = 'none';
+    }
+});
+
+const formOs = document.getElementById('osForm');
+if (formOs) {
+    formOs.addEventListener('submit', function(e) {
+        const clienteId = inputClienteId ? inputClienteId.value : '';
+        
+        if (!clienteId || clienteId === '') {
+            e.preventDefault();
+            const erroCliente = document.getElementById('erro-cliente');
+            if (erroCliente) {
+                erroCliente.style.display = 'block';
+            }
+            if (inputBusca) {
+                inputBusca.focus();
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            alert('Por favor, selecione um cliente antes de continuar.');
+            return false;
+        }
+    });
+}
+
+// ========== CÁLCULO DE TOTAL ==========
+function calcularTotal() {
+    const maoObra = parseFloat(document.getElementById('id_valor_mao_obra')?.value || 0);
+    const pecas = parseFloat(document.getElementById('id_valor_pecas')?.value || 0);
+    const desconto = parseFloat(document.getElementById('id_desconto')?.value || 0);
+    
+    const total = (maoObra + pecas) - desconto;
+    
+    const totalElement = document.getElementById('valor-total');
+    if (totalElement) {
+        totalElement.textContent = 'R$ ' + total.toLocaleString('pt-BR', { 
+            minimumFractionDigits: 2, 
+            maximumFractionDigits: 2 
+        });
+    }
+}
+
+const inputMaoObra = document.getElementById('id_valor_mao_obra');
+const inputValorPecas = document.getElementById('id_valor_pecas');
+const inputDesconto = document.getElementById('id_desconto');
+
+if (inputMaoObra) inputMaoObra.addEventListener('input', calcularTotal);
+if (inputValorPecas) inputValorPecas.addEventListener('input', calcularTotal);
+if (inputDesconto) inputDesconto.addEventListener('input', calcularTotal);
+
+document.addEventListener('DOMContentLoaded', calcularTotal);
+
+// ========== FORMSET DE PEÇAS ==========
+let formNum = {{ formset.total_form_count }};
+
+const btnAddPeca = document.getElementById('add-peca');
+if (btnAddPeca) {
+    btnAddPeca.addEventListener('click', function() {
+        const formsetDiv = document.getElementById('pecas-formset');
+        if (!formsetDiv) return;
+        
+        const firstForm = formsetDiv.querySelector('.peca-form');
+        if (!firstForm) return;
+        
+        const newForm = firstForm.cloneNode(true);
+        
+        const formRegex = RegExp(`form-(\\d+)-`, 'g');
+        newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formNum}-`);
+        
+        newForm.querySelectorAll('input, select').forEach(field => {
+            if (field.type !== 'checkbox') {
+                field.value = '';
+            } else {
+                field.checked = false;
+            }
+        });
+        
+        formsetDiv.appendChild(newForm);
+        formNum++;
+        
+        const totalFormsInput = document.getElementById('id_pecas_utilizadas-TOTAL_FORMS');
+        if (totalFormsInput) {
+            totalFormsInput.value = formNum;
+        }
+    });
+}
+</script>
+{% endblock %}
