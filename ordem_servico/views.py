@@ -9,6 +9,7 @@ from .models import OrdemServico, PecaUtilizada, HistoricoOS
 from .forms import OrdemServicoForm, PecaUtilizadaFormSet
 from estoque.models import MovimentacaoEstoque
 from clientes.models import Cliente
+from financeiro.models import Transacao, CategoriaFinanceira
 
 
 @login_required
@@ -93,13 +94,12 @@ def ordem_servico_criar(request):
             formset.instance = ordem
             pecas = formset.save()
             
-            # Atualizar valor_pecas
-            total_pecas = sum([p.valor_total for p in pecas])
-            ordem.valor_pecas = total_pecas
-            ordem.save()
-            
-            # Registrar movimentação de estoque para cada peça
+            # Atualizar valor_pecas e registrar despesas
+            total_pecas = 0
             for peca_utilizada in pecas:
+                total_pecas += peca_utilizada.valor_total
+                
+                # Registrar movimentação de estoque
                 MovimentacaoEstoque.objects.create(
                     peca=peca_utilizada.peca,
                     tipo='saida',
@@ -108,9 +108,41 @@ def ordem_servico_criar(request):
                     ordem_servico=ordem,
                     valor_unitario=peca_utilizada.valor_unitario
                 )
+                
                 # Atualizar estoque
                 peca_utilizada.peca.quantidade_estoque -= peca_utilizada.quantidade
                 peca_utilizada.peca.save()
+                
+                # NOVO: Registrar despesa financeira automaticamente
+                try:
+                    categoria_pecas = CategoriaFinanceira.objects.get(
+                        nome='Peças e Componentes',
+                        tipo='despesa'
+                    )
+                except CategoriaFinanceira.DoesNotExist:
+                    # Criar categoria se não existir
+                    categoria_pecas = CategoriaFinanceira.objects.create(
+                        nome='Peças e Componentes',
+                        tipo='despesa',
+                        descricao='Despesas com compra de peças para reparos',
+                        cor='#e74c3c'
+                    )
+                
+                Transacao.objects.create(
+                    tipo='despesa',
+                    categoria=categoria_pecas,
+                    descricao=f'Peças utilizadas - OS {ordem.numero_os} - {peca_utilizada.peca.descricao}',
+                    valor=peca_utilizada.peca.preco_custo * peca_utilizada.quantidade,
+                    data_vencimento=ordem.data_entrada.date(),
+                    data_pagamento=ordem.data_entrada.date(),
+                    status='pago',
+                    ordem_servico=ordem,
+                    usuario=request.user,
+                    observacoes=f'Peça: {peca_utilizada.peca.codigo_interno} - Qtd: {peca_utilizada.quantidade}'
+                )
+            
+            ordem.valor_pecas = total_pecas
+            ordem.save()
             
             messages.success(request, f'OS {ordem.numero_os} criada com sucesso!')
             return redirect('ordem_servico_detalhe', pk=ordem.pk)
@@ -139,7 +171,43 @@ def ordem_servico_editar(request, pk):
             # Salvar ordem
             ordem = form.save(commit=False)
             
-            # Se mudou o status, registrar no histórico
+            # NOVO: Se mudou para status 'entregue', registrar receita
+            if status_anterior != 'entregue' and ordem.status == 'entregue':
+                try:
+                    categoria_servicos = CategoriaFinanceira.objects.get(
+                        nome='Serviços Prestados',
+                        tipo='receita'
+                    )
+                except CategoriaFinanceira.DoesNotExist:
+                    # Criar categoria se não existir
+                    categoria_servicos = CategoriaFinanceira.objects.create(
+                        nome='Serviços Prestados',
+                        tipo='receita',
+                        descricao='Receitas de serviços de assistência técnica',
+                        cor='#27ae60'
+                    )
+                
+                # Verificar se já existe transação para esta OS
+                if not Transacao.objects.filter(
+                    ordem_servico=ordem,
+                    tipo='receita'
+                ).exists():
+                    Transacao.objects.create(
+                        tipo='receita',
+                        categoria=categoria_servicos,
+                        descricao=f'Pagamento OS {ordem.numero_os} - {ordem.cliente.nome}',
+                        valor=ordem.valor_total,
+                        data_vencimento=ordem.data_entrega.date() if ordem.data_entrega else timezone.now().date(),
+                        data_pagamento=ordem.data_entrega.date() if ordem.data_entrega else timezone.now().date(),
+                        status='pago',
+                        forma_pagamento='dinheiro',
+                        ordem_servico=ordem,
+                        usuario=request.user,
+                        observacoes=f'Equipamento: {ordem.get_tipo_equipamento_display()} {ordem.marca} {ordem.modelo}'
+                    )
+                    messages.success(request, 'Receita registrada automaticamente no financeiro!')
+            
+            # Registrar histórico de mudança de status
             if status_anterior != ordem.status:
                 HistoricoOS.objects.create(
                     ordem_servico=ordem,
@@ -160,15 +228,10 @@ def ordem_servico_editar(request, pk):
             
             ordem.save()
             
-            # Processar peças
-            # Primeiro, restaurar estoque das peças removidas
+            # Processar peças (mantém a lógica original de estoque)
             pecas_antigas = set(PecaUtilizada.objects.filter(ordem_servico=ordem).values_list('id', flat=True))
-            
-            # Salvar novas peças
             pecas_novas = formset.save()
             pecas_novas_ids = set([p.id for p in pecas_novas])
-            
-            # Identificar peças removidas
             pecas_removidas_ids = pecas_antigas - pecas_novas_ids
             
             # Restaurar estoque das peças removidas

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Pagamento - DJTECH-OS{% endblock %}
+
+{% block page_title %}Confirmar Pagamento{% endblock %}
+{% block page_subtitle %}Marcar transação como paga{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-check-circle"></i> Confirmar Pagamento
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Esta transação será marcada como <strong>PAGA</strong> com a data de hoje.
+                </div>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted" width="40%"><strong>Tipo:</strong></td>
+                            <td>
+                                {% if transacao.tipo == 'receita' %}
+                                    <span class="badge bg-success">Receita</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Despesa</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Descrição:</strong></td>
+                            <td>{{ transacao.descricao }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Categoria:</strong></td>
+                            <td>
+                                <span class="badge" style="background-color: {{ transacao.categoria.cor }};">
+                                    {{ transacao.categoria.nome }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Valor:</strong></td>
+                            <td class="{% if transacao.tipo == 'receita' %}text-success{% else %}text-danger{% endif %}">
+                                <strong style="font-size: 1.5rem;">R$ {{ transacao.valor|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Vencimento:</strong></td>
+                            <td>{{ transacao.data_vencimento|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Data do Pagamento:</strong></td>
+                            <td><strong>{{ "now"|date:"d/m/Y" }}</strong> (Hoje)</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="bi bi-check-circle"></i> Confirmar Pagamento
+                        </button>
+                        <a href="{% url 'transacao_lista' %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

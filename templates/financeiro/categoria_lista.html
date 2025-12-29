@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+
+{% block title %}Categorias Financeiras - DJTECH-OS{% endblock %}
+
+{% block page_title %}Categorias Financeiras{% endblock %}
+{% block page_subtitle %}Gerenciar categorias de receitas e despesas{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-12 text-end">
+        <a href="{% url 'categoria_financeira_criar' %}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Nova Categoria
+        </a>
+        <a href="{% url 'financeiro_dashboard' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Categorias de Receita -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-down-circle"></i> Categorias de Receita
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for categoria in categorias %}
+                    {% if categoria.tipo == 'receita' %}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge" style="background-color: {{ categoria.cor }}; padding: 8px 15px;">
+                                        {{ categoria.nome }}
+                                    </span>
+                                    {% if categoria.descricao %}
+                                        <br><small class="text-muted">{{ categoria.descricao }}</small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if not categoria.ativo %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Categorias de Despesa -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-up-circle"></i> Categorias de Despesa
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for categoria in categorias %}
+                    {% if categoria.tipo == 'despesa' %}
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge" style="background-color: {{ categoria.cor }}; padding: 8px 15px;">
+                                        {{ categoria.nome }}
+                                    </span>
+                                    {% if categoria.descricao %}
+                                        <br><small class="text-muted">{{ categoria.descricao }}</small>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    {% if not categoria.ativo %}
+                                        <span class="badge bg-secondary">Inativa</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not categorias %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info text-center">
+            <i class="bi bi-info-circle" style="font-size: 48px;"></i>
+            <h5 class="mt-3">Nenhuma categoria cadastrada</h5>
+            <p>Crie categorias para organizar suas receitas e despesas</p>
+            <a href="{% url 'categoria_financeira_criar' %}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> Criar Primeira Categoria
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

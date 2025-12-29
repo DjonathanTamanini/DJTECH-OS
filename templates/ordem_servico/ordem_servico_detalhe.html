@@ -17,6 +17,16 @@
         <a href="{% url 'ordem_servico_imprimir' ordem.pk %}" class="btn btn-info" target="_blank">
             <i class="bi bi-printer"></i> Imprimir
         </a>
+            {% if ordem.status == 'entregue' %}
+        {% if ordem.transacoes_financeiras.exists %}
+        <div class="alert alert-success mt-3">
+            <i class="bi bi-check-circle-fill"></i>
+            <strong>Receita Registrada!</strong> 
+            O pagamento desta OS foi registrado automaticamente no módulo financeiro.
+            <a href="{% url 'transacao_lista' %}?tipo=receita" class="alert-link">Ver transações</a>
+        </div>
+        {% endif %}
+    {% endif %}
         
         {% if ordem.status == 'entregue' and ordem.data_fim_garantia %}
             {% now "Y-m-d" as hoje %}

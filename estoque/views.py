@@ -4,6 +4,7 @@ from django.contrib import messages
 from django.db.models import Q, F
 from .models import CategoriaPeca, Peca, MovimentacaoEstoque
 from .forms import CategoriaPecaForm, PecaForm, MovimentacaoEstoqueForm
+from financeiro.models import Transacao, CategoriaFinanceira
 
 
 @login_required
@@ -110,13 +111,50 @@ def movimentacao_criar(request):
             peca = movimentacao.peca
             if movimentacao.tipo == 'entrada':
                 peca.quantidade_estoque += movimentacao.quantidade
+                
+                # NOVO: Registrar despesa financeira na entrada de peças
+                if movimentacao.valor_unitario and movimentacao.valor_unitario > 0:
+                    try:
+                        categoria_compra_pecas = CategoriaFinanceira.objects.get(
+                            nome='Compra de Peças',
+                            tipo='despesa'
+                        )
+                    except CategoriaFinanceira.DoesNotExist:
+                        # Criar categoria se não existir
+                        categoria_compra_pecas = CategoriaFinanceira.objects.create(
+                            nome='Compra de Peças',
+                            tipo='despesa',
+                            descricao='Despesas com compra de peças para estoque',
+                            cor='#e67e22'
+                        )
+                    
+                    valor_total = movimentacao.quantidade * movimentacao.valor_unitario
+                    
+                    Transacao.objects.create(
+                        tipo='despesa',
+                        categoria=categoria_compra_pecas,
+                        descricao=f'Compra de estoque - {peca.descricao}',
+                        valor=valor_total,
+                        data_vencimento=timezone.now().date(),
+                        data_pagamento=timezone.now().date(),
+                        status='pago',
+                        fornecedor=movimentacao.fornecedor,
+                        usuario=request.user,
+                        observacoes=f'Peça: {peca.codigo_interno} - Qtd: {movimentacao.quantidade} - Valor unitário: R$ {movimentacao.valor_unitario}'
+                    )
+                    messages.success(request, 'Movimentação registrada e despesa lançada no financeiro!')
+                else:
+                    messages.success(request, 'Movimentação registrada com sucesso!')
+                    
             elif movimentacao.tipo == 'saida':
                 peca.quantidade_estoque -= movimentacao.quantidade
+                messages.success(request, 'Movimentação registrada com sucesso!')
             else:  # ajuste
                 peca.quantidade_estoque = movimentacao.quantidade
+                messages.success(request, 'Movimentação registrada com sucesso!')
+            
             peca.save()
             
-            messages.success(request, f'Movimentação registrada com sucesso!')
             return redirect('peca_detalhe', pk=peca.pk)
     else:
         form = MovimentacaoEstoqueForm()

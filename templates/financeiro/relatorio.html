@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatório Financeiro - DJTECH-OS{% endblock %}
+
+{% block page_title %}Relatório Financeiro{% endblock %}
+{% block page_subtitle %}Análise detalhada das finanças{% endblock %}
+
+{% block content %}
+<!-- Filtro de Período -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Data Início</label>
+                        <input type="date" name="data_inicio" class="form-control" 
+                               value="{{ data_inicio|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Data Fim</label>
+                        <input type="date" name="data_fim" class="form-control" 
+                               value="{{ data_fim|date:'Y-m-d' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-filter"></i> Gerar Relatório
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cards de Resumo -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Receitas Pagas</h6>
+                <h2 class="text-success">R$ {{ total_receitas_pagas|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Despesas Pagas</h6>
+                <h2 class="text-danger">R$ {{ total_despesas_pagas|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Lucro Líquido</h6>
+                <h2 class="{% if lucro_liquido >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    R$ {{ lucro_liquido|floatformat:2 }}
+                </h2>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted">A Receber</h6>
+                <h2 class="text-warning">R$ {{ total_receitas_pendentes|floatformat:2 }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Receitas por Categoria -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-down-circle"></i> Receitas por Categoria
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if receitas_categoria %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th class="text-end">Valor</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in receitas_categoria %}
+                                <tr>
+                                    <td>{{ item.categoria__nome }}</td>
+                                    <td class="text-end text-success">
+                                        <strong>R$ {{ item.total|floatformat:2 }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        {% widthratio item.total total_receitas_pagas 100 %}%
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>TOTAL</th>
+                                    <th class="text-end text-success">R$ {{ total_receitas_pagas|floatformat:2 }}</th>
+                                    <th class="text-end">100%</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">Sem receitas no período</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Despesas por Categoria -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-arrow-up-circle"></i> Despesas por Categoria
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if despesas_categoria %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Categoria</th>
+                                    <th class="text-end">Valor</th>
+                                    <th class="text-end">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in despesas_categoria %}
+                                <tr>
+                                    <td>{{ item.categoria__nome }}</td>
+                                    <td class="text-end text-danger">
+                                        <strong>R$ {{ item.total|floatformat:2 }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        {% widthratio item.total total_despesas_pagas 100 %}%
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th>TOTAL</th>
+                                    <th class="text-end text-danger">R$ {{ total_despesas_pagas|floatformat:2 }}</th>
+                                    <th class="text-end">100%</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">Sem despesas no período</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top 10 OS com Maior Lucro -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-trophy"></i> Top 10 OS com Maior Lucro
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if os_com_lucro %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>OS</th>
+                                    <th>Cliente</th>
+                                    <th>Equipamento</th>
+                                    <th class="text-end">Valor Total</th>
+                                    <th class="text-end">Custo Peças</th>
+                                    <th class="text-end">Lucro</th>
+                                    <th class="text-end">Margem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for os in os_com_lucro %}
+                                <tr>
+                                    <td><strong>{{ os.numero_os }}</strong></td>
+                                    <td>{{ os.cliente.nome|truncatewords:3 }}</td>
+                                    <td>{{ os.get_tipo_equipamento_display }}</td>
+                                    <td class="text-end">R$ {{ os.valor_total|floatformat:2 }}</td>
+                                    <td class="text-end">R$ {{ os.valor_pecas|floatformat:2 }}</td>
+                                    <td class="text-end text-success">
+                                        <strong>R$ {{ os.lucro|floatformat:2 }}</strong>
+                                    </td>
+                                    <td class="text-end">
+                                        {% if os.valor_total > 0 %}
+                                            {% widthratio os.lucro os.valor_total 100 %}%
+                                        {% else %}
+                                            0%
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center py-4">
+                        Nenhuma OS entregue no período selecionado
+                    </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

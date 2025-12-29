@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir Transação - DJTECH-OS{% endblock %}
+
+{% block page_title %}Excluir Transação{% endblock %}
+{% block page_subtitle %}Confirmação de exclusão{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Confirmar Exclusão
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <strong>Atenção!</strong> Esta ação não pode ser desfeita.
+                </div>
+                
+                <p class="lead">Tem certeza que deseja excluir esta transação?</p>
+                
+                <div class="bg-light p-3 rounded mb-4">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tr>
+                            <td class="text-muted" width="40%"><strong>Tipo:</strong></td>
+                            <td>
+                                {% if transacao.tipo == 'receita' %}
+                                    <span class="badge bg-success">Receita</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Despesa</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Descrição:</strong></td>
+                            <td>{{ transacao.descricao }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Categoria:</strong></td>
+                            <td>{{ transacao.categoria.nome }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Valor:</strong></td>
+                            <td class="{% if transacao.tipo == 'receita' %}text-success{% else %}text-danger{% endif %}">
+                                <strong>R$ {{ transacao.valor|floatformat:2 }}</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Vencimento:</strong></td>
+                            <td>{{ transacao.data_vencimento|date:"d/m/Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted"><strong>Status:</strong></td>
+                            <td>{{ transacao.get_status_display }}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="bi bi-trash"></i> Sim, Excluir Transação
+                        </button>
+                        <a href="{% url 'transacao_lista' %}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
