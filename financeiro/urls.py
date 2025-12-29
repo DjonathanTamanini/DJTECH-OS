@@ -18,4 +18,12 @@ urlpatterns = [
     # Categorias
     path('categorias/', views.categoria_lista, name='categoria_financeira_lista'),
     path('categorias/nova/', views.categoria_criar, name='categoria_financeira_criar'),
+
+    # Notas Fiscais
+    path('notas/', views.nota_fiscal_lista, name='nota_fiscal_lista'),
+    path('notas/nova/', views.nota_fiscal_criar, name='nota_fiscal_criar'),
+    path('notas/<int:pk>/', views.nota_fiscal_detalhe, name='nota_fiscal_detalhe'),
+    path('notas/<int:pk>/integrar-estoque/', views.nota_fiscal_integrar_estoque, name='nota_fiscal_integrar_estoque'),
+    path('notas/<int:pk>/integrar-financeiro/', views.nota_fiscal_integrar_financeiro, name='nota_fiscal_integrar_financeiro'),
+    path('notas/<int:pk>/integrar-completo/', views.nota_fiscal_integrar_completo, name='nota_fiscal_integrar_completo'),
 ]

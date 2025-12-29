@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import MinValueValidator
 
 
 class CategoriaFinanceira(models.Model):
@@ -131,3 +132,175 @@ class ContaBancaria(models.Model):
         ).aggregate(total=models.Sum('valor'))['total'] or 0
         
         return self.saldo_inicial + receitas - despesas
+
+
+# NOVO MODELO: Nota Fiscal
+class NotaFiscal(models.Model):
+    TIPO_CHOICES = [
+        ('entrada', 'Entrada'),
+        ('saida', 'Saída'),
+    ]
+    
+    # Dados da Nota
+    numero_nota = models.CharField(
+        max_length=50,
+        verbose_name="Número da Nota"
+    )
+    serie = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        verbose_name="Série"
+    )
+    chave_acesso = models.CharField(
+        max_length=44,
+        blank=True,
+        null=True,
+        verbose_name="Chave de Acesso",
+        help_text="Chave de 44 dígitos da NF-e"
+    )
+    
+    tipo = models.CharField(
+        max_length=10,
+        choices=TIPO_CHOICES,
+        default='entrada'
+    )
+    
+    # Fornecedor/Cliente
+    fornecedor = models.ForeignKey(
+        'fornecedores.Fornecedor',
+        on_delete=models.PROTECT,
+        related_name='notas_fiscais',
+        verbose_name="Fornecedor",
+        null=True,
+        blank=True
+    )
+    
+    cliente = models.ForeignKey(
+        'clientes.Cliente',
+        on_delete=models.PROTECT,
+        related_name='notas_fiscais',
+        verbose_name="Cliente",
+        null=True,
+        blank=True
+    )
+    
+    # Datas
+    data_emissao = models.DateField(verbose_name="Data de Emissão")
+    data_entrada = models.DateField(
+        verbose_name="Data de Entrada",
+        help_text="Data que a nota foi registrada no sistema"
+    )
+    
+    # Valores
+    valor_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor Total"
+    )
+    
+    valor_frete = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor do Frete"
+    )
+    
+    valor_desconto = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor do Desconto"
+    )
+    
+    # Status
+    integrada_estoque = models.BooleanField(
+        default=False,
+        verbose_name="Integrada ao Estoque",
+        help_text="Indica se os itens já foram lançados no estoque"
+    )
+    
+    integrada_financeiro = models.BooleanField(
+        default=False,
+        verbose_name="Integrada ao Financeiro",
+        help_text="Indica se já foi gerada a transação financeira"
+    )
+    
+    # Informações adicionais
+    observacoes = models.TextField(blank=True, null=True)
+    
+    # Controle
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        verbose_name="Usuário"
+    )
+    data_cadastro = models.DateTimeField(auto_now_add=True)
+    data_atualizacao = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Nota Fiscal"
+        verbose_name_plural = "Notas Fiscais"
+        ordering = ['-data_entrada']
+        unique_together = ['numero_nota', 'serie', 'fornecedor']
+    
+    def __str__(self):
+        return f"NF {self.numero_nota} - {self.fornecedor}"
+    
+    @property
+    def valor_liquido(self):
+        """Calcula o valor líquido da nota"""
+        return self.valor_total + self.valor_frete - self.valor_desconto
+
+
+# NOVO MODELO: Itens da Nota Fiscal
+class ItemNotaFiscal(models.Model):
+    nota_fiscal = models.ForeignKey(
+        NotaFiscal,
+        on_delete=models.CASCADE,
+        related_name='itens',
+        verbose_name="Nota Fiscal"
+    )
+    
+    peca = models.ForeignKey(
+        'estoque.Peca',
+        on_delete=models.PROTECT,
+        related_name='itens_nota_fiscal',
+        verbose_name="Peça"
+    )
+    
+    quantidade = models.IntegerField(
+        validators=[MinValueValidator(1)],
+        verbose_name="Quantidade"
+    )
+    
+    valor_unitario = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor Unitário"
+    )
+    
+    valor_total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0)],
+        verbose_name="Valor Total",
+        help_text="Quantidade × Valor Unitário"
+    )
+    
+    class Meta:
+        verbose_name = "Item da Nota Fiscal"
+        verbose_name_plural = "Itens da Nota Fiscal"
+        ordering = ['id']
+    
+    def __str__(self):
+        return f"{self.peca.codigo_interno} - {self.quantidade}un"
+    
+    def save(self, *args, **kwargs):
+        # Calcula o valor total automaticamente
+        self.valor_total = self.quantidade * self.valor_unitario
+        super().save(*args, **kwargs)

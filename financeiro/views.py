@@ -3,10 +3,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import TruncMonth
+from django.db import transaction
 from datetime import datetime, date, timedelta
-from .models import CategoriaFinanceira, Transacao, ContaBancaria
-from .forms import CategoriaFinanceiraForm, TransacaoForm, ContaBancariaForm
+from .models import CategoriaFinanceira, Transacao, ContaBancaria, NotaFiscal, ItemNotaFiscal
+from .forms import (CategoriaFinanceiraForm, TransacaoForm, ContaBancariaForm, 
+                    NotaFiscalForm, ItemNotaFiscalFormSet)
 from ordem_servico.models import OrdemServico
+from estoque.models import MovimentacaoEstoque
 
 
 @login_required
@@ -85,6 +88,7 @@ def dashboard_financeiro(request):
     }
     
     return render(request, 'financeiro/dashboard.html', context)
+
 
 @login_required
 def transacao_lista(request):
@@ -240,15 +244,6 @@ def relatorio_financeiro(request):
     total_receitas_pendentes = transacoes.filter(tipo='receita', status='pendente').aggregate(Sum('valor'))['valor__sum'] or 0
     total_despesas_pendentes = transacoes.filter(tipo='despesa', status='pendente').aggregate(Sum('valor'))['valor__sum'] or 0
     
-    # Lucro por OS
-    os_com_lucro = OrdemServico.objects.filter(
-        status='entregue',
-        data_entrega__gte=data_inicio,
-        data_entrega__lte=data_fim
-    ).annotate(
-        lucro=models.F('valor_total') - models.F('valor_pecas')
-    ).order_by('-lucro')[:10]
-    
     context = {
         'data_inicio': data_inicio,
         'data_fim': data_fim,
@@ -259,7 +254,6 @@ def relatorio_financeiro(request):
         'total_receitas_pendentes': total_receitas_pendentes,
         'total_despesas_pendentes': total_despesas_pendentes,
         'lucro_liquido': total_receitas_pagas - total_despesas_pagas,
-        'os_com_lucro': os_com_lucro,
     }
     
     return render(request, 'financeiro/relatorio.html', context)
@@ -284,3 +278,231 @@ def categoria_criar(request):
     
     context = {'form': form, 'titulo': 'Nova Categoria'}
     return render(request, 'financeiro/categoria_form.html', context)
+
+
+# ==================== NOTAS FISCAIS ====================
+
+@login_required
+def nota_fiscal_lista(request):
+    """Lista todas as notas fiscais"""
+    notas = NotaFiscal.objects.select_related('fornecedor', 'cliente', 'usuario').order_by('-data_entrada')
+    
+    # Filtros
+    tipo_filtro = request.GET.get('tipo', '')
+    if tipo_filtro:
+        notas = notas.filter(tipo=tipo_filtro)
+    
+    context = {
+        'notas': notas,
+        'tipo_filtro': tipo_filtro,
+    }
+    return render(request, 'financeiro/nota_fiscal_lista.html', context)
+
+
+@login_required
+@transaction.atomic
+def nota_fiscal_criar(request):
+    """Cria uma nova nota fiscal com seus itens"""
+    if request.method == 'POST':
+        form = NotaFiscalForm(request.POST)
+        formset = ItemNotaFiscalFormSet(request.POST)
+        
+        if form.is_valid() and formset.is_valid():
+            # Salva a nota fiscal
+            nota = form.save(commit=False)
+            nota.usuario = request.user
+            nota.save()
+            
+            # Salva os itens
+            formset.instance = nota
+            formset.save()
+            
+            messages.success(request, f'Nota Fiscal {nota.numero_nota} cadastrada com sucesso!')
+            return redirect('nota_fiscal_detalhe', pk=nota.pk)
+    else:
+        form = NotaFiscalForm()
+        formset = ItemNotaFiscalFormSet()
+    
+    context = {
+        'form': form,
+        'formset': formset,
+        'titulo': 'Nova Nota Fiscal'
+    }
+    return render(request, 'financeiro/nota_fiscal_form.html', context)
+
+
+@login_required
+def nota_fiscal_detalhe(request, pk):
+    """Exibe detalhes de uma nota fiscal"""
+    nota = get_object_or_404(NotaFiscal.objects.select_related('fornecedor', 'cliente', 'usuario'), pk=pk)
+    itens = nota.itens.select_related('peca').all()
+    
+    context = {
+        'nota': nota,
+        'itens': itens,
+    }
+    return render(request, 'financeiro/nota_fiscal_detalhe.html', context)
+
+
+@login_required
+@transaction.atomic
+def nota_fiscal_integrar_estoque(request, pk):
+    """Integra a nota fiscal ao estoque (dá entrada nas peças)"""
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    
+    if nota.integrada_estoque:
+        messages.warning(request, 'Esta nota já foi integrada ao estoque!')
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    if nota.tipo != 'entrada':
+        messages.error(request, 'Apenas notas de ENTRADA podem ser integradas ao estoque!')
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            # Para cada item da nota, cria uma movimentação de entrada no estoque
+            itens_processados = 0
+            for item in nota.itens.all():
+                MovimentacaoEstoque.objects.create(
+                    peca=item.peca,
+                    tipo='entrada',
+                    quantidade=item.quantidade,
+                    valor_unitario=item.valor_unitario,
+                    nota_fiscal=nota,
+                    fornecedor=nota.fornecedor,
+                    usuario=request.user,
+                    observacoes=f'Entrada via NF {nota.numero_nota}'
+                )
+                itens_processados += 1
+            
+            # Marca a nota como integrada ao estoque
+            nota.integrada_estoque = True
+            nota.save()
+            
+            messages.success(
+                request,
+                f'Nota Fiscal integrada ao estoque com sucesso! {itens_processados} item(ns) processado(s).'
+            )
+        except Exception as e:
+            messages.error(request, f'Erro ao integrar nota ao estoque: {str(e)}')
+        
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    context = {'nota': nota}
+    return render(request, 'financeiro/nota_fiscal_confirmar_integracao.html', context)
+
+
+@login_required
+@transaction.atomic
+def nota_fiscal_integrar_financeiro(request, pk):
+    """Integra a nota fiscal ao financeiro (cria transação de despesa)"""
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    
+    if nota.integrada_financeiro:
+        messages.warning(request, 'Esta nota já foi integrada ao financeiro!')
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            # Busca ou cria a categoria "Compra de Peças"
+            categoria, created = CategoriaFinanceira.objects.get_or_create(
+                nome='Compra de Peças',
+                tipo='despesa',
+                defaults={
+                    'descricao': 'Despesas com compra de peças para estoque',
+                    'cor': '#e67e22'
+                }
+            )
+            
+            # Cria a transação financeira
+            Transacao.objects.create(
+                tipo='despesa',
+                categoria=categoria,
+                descricao=f'NF {nota.numero_nota} - {nota.fornecedor}',
+                valor=nota.valor_liquido,
+                data_vencimento=nota.data_emissao,
+                data_pagamento=nota.data_entrada,
+                status='pago',
+                fornecedor=nota.fornecedor,
+                usuario=request.user,
+                observacoes=f'Nota Fiscal {nota.numero_nota} | Série: {nota.serie}'
+            )
+            
+            # Marca a nota como integrada ao financeiro
+            nota.integrada_financeiro = True
+            nota.save()
+            
+            messages.success(request, 'Nota Fiscal integrada ao financeiro com sucesso!')
+        except Exception as e:
+            messages.error(request, f'Erro ao integrar nota ao financeiro: {str(e)}')
+        
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    context = {'nota': nota}
+    return render(request, 'financeiro/nota_fiscal_confirmar_integracao_financeiro.html', context)
+
+
+@login_required
+@transaction.atomic
+def nota_fiscal_integrar_completo(request, pk):
+    """Integra a nota tanto no estoque quanto no financeiro"""
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    
+    if nota.integrada_estoque and nota.integrada_financeiro:
+        messages.warning(request, 'Esta nota já foi totalmente integrada!')
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    if request.method == 'POST':
+        try:
+            # Integra ao estoque (se ainda não foi)
+            if not nota.integrada_estoque and nota.tipo == 'entrada':
+                itens_processados = 0
+                for item in nota.itens.all():
+                    MovimentacaoEstoque.objects.create(
+                        peca=item.peca,
+                        tipo='entrada',
+                        quantidade=item.quantidade,
+                        valor_unitario=item.valor_unitario,
+                        nota_fiscal=nota,
+                        fornecedor=nota.fornecedor,
+                        usuario=request.user,
+                        observacoes=f'Entrada via NF {nota.numero_nota}'
+                    )
+                    itens_processados += 1
+                nota.integrada_estoque = True
+            
+            # Integra ao financeiro (se ainda não foi)
+            if not nota.integrada_financeiro:
+                categoria, created = CategoriaFinanceira.objects.get_or_create(
+                    nome='Compra de Peças',
+                    tipo='despesa',
+                    defaults={
+                        'descricao': 'Despesas com compra de peças para estoque',
+                        'cor': '#e67e22'
+                    }
+                )
+                
+                Transacao.objects.create(
+                    tipo='despesa',
+                    categoria=categoria,
+                    descricao=f'NF {nota.numero_nota} - {nota.fornecedor}',
+                    valor=nota.valor_liquido,
+                    data_vencimento=nota.data_emissao,
+                    data_pagamento=nota.data_entrada,
+                    status='pago',
+                    fornecedor=nota.fornecedor,
+                    usuario=request.user,
+                    observacoes=f'Nota Fiscal {nota.numero_nota} | Série: {nota.serie}'
+                )
+                nota.integrada_financeiro = True
+            
+            nota.save()
+            
+            messages.success(request, 'Nota Fiscal integrada completamente (Estoque + Financeiro)!')
+        except Exception as e:
+            messages.error(request, f'Erro ao integrar nota: {str(e)}')
+        
+        return redirect('nota_fiscal_detalhe', pk=pk)
+    
+    context = {'nota': nota}
+    return render(request, 'financeiro/nota_fiscal_confirmar_integracao_completa.html', context)

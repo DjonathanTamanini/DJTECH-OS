@@ -10,6 +10,11 @@ from .forms import OrdemServicoForm, PecaUtilizadaFormSet
 from estoque.models import MovimentacaoEstoque
 from clientes.models import Cliente
 from financeiro.models import Transacao, CategoriaFinanceira
+from estoque.models import Peca
+
+
+
+
 
 
 @login_required
@@ -306,3 +311,32 @@ def buscar_clientes_ajax(request):
     ).values('id', 'nome', 'cpf_cnpj', 'telefone_principal')[:10]
     
     return JsonResponse({'clientes': list(clientes)})
+
+
+def api_buscar_pecas_json(request):
+    """
+    View que retorna a lista de peças em formato JSON para o modal de busca.
+    Filtra por nome, código interno ou part number.
+    """
+    termo = request.GET.get('q', '')
+    
+    # Filtra apenas peças ativas que contenham o termo pesquisado
+    pecas = Peca.objects.filter(
+        Q(nome__icontains=termo) | 
+        Q(codigo_interno__icontains=termo) | 
+        Q(part_number__icontains=termo),
+        ativo=True
+    ).order_by('nome')[:15] # Limita a 15 resultados por performance
+
+    # Monta a lista de dicionários para o JSON
+    dados = []
+    for p in pecas:
+        dados.append({
+            'id': p.id,
+            'codigo': p.codigo_interno,
+            'nome': p.nome,
+            'estoque': p.quantidade_estoque, # Usa a @property que criamos no models.py
+            'preco': str(p.preco_venda)      # Decimal precisa virar string para JSON
+        })
+    
+    return JsonResponse(dados, safe=False)

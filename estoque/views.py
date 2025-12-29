@@ -1,7 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum, Case, When, IntegerField
+from django.db.models.functions import Coalesce
+from django.utils import timezone
 from .models import CategoriaPeca, Peca, MovimentacaoEstoque
 from .forms import CategoriaPecaForm, PecaForm, MovimentacaoEstoqueForm
 from financeiro.models import Transacao, CategoriaFinanceira
@@ -13,11 +15,24 @@ def peca_lista(request):
     categoria_id = request.GET.get('categoria', '')
     estoque_baixo = request.GET.get('estoque_baixo', '')
     
-    pecas = Peca.objects.select_related('categoria', 'fornecedor_principal')
+    # Usamos annotate para calcular o saldo no banco de dados, permitindo a filtragem
+    pecas = Peca.objects.annotate(
+        saldo_calculado=Coalesce(
+            Sum(
+                Case(
+                    When(movimentacoes__tipo='entrada', then=F('movimentacoes__quantidade')),
+                    When(movimentacoes__tipo='saida', then=-F('movimentacoes__quantidade')),
+                    When(movimentacoes__tipo='ajuste', then=F('movimentacoes__quantidade')), # Ajuste costuma ser o valor real
+                    output_field=IntegerField(),
+                )
+            ), 0
+        )
+    ).select_related('categoria', 'fornecedor_principal')
     
     if busca:
         pecas = pecas.filter(
             Q(codigo_interno__icontains=busca) |
+            Q(nome__icontains=busca) |
             Q(descricao__icontains=busca)
         )
     
@@ -25,9 +40,10 @@ def peca_lista(request):
         pecas = pecas.filter(categoria_id=categoria_id)
     
     if estoque_baixo:
-        pecas = pecas.filter(quantidade_estoque__lte=F('estoque_minimo'))
+        # Agora filtramos pelo campo anotado 'saldo_calculado'
+        pecas = pecas.filter(saldo_calculado__lte=F('quantidade_minima'))
     
-    pecas = pecas.order_by('descricao')
+    pecas = pecas.order_by('nome')
     categorias = CategoriaPeca.objects.all().order_by('nome')
     
     context = {
@@ -100,60 +116,51 @@ def peca_deletar(request, pk):
 
 @login_required
 def movimentacao_criar(request):
+    """
+    Cria movimentação e integra com o financeiro.
+    Removida a tentativa de alterar peca.quantidade_estoque diretamente.
+    """
     if request.method == 'POST':
         form = MovimentacaoEstoqueForm(request.POST)
         if form.is_valid():
             movimentacao = form.save(commit=False)
             movimentacao.usuario = request.user
-            movimentacao.save()
+            movimentacao.save() # O save() do modelo já atualiza o preco_venda se for entrada
             
-            # Atualizar estoque
             peca = movimentacao.peca
-            if movimentacao.tipo == 'entrada':
-                peca.quantidade_estoque += movimentacao.quantidade
-                
-                # NOVO: Registrar despesa financeira na entrada de peças
-                if movimentacao.valor_unitario and movimentacao.valor_unitario > 0:
-                    try:
-                        categoria_compra_pecas = CategoriaFinanceira.objects.get(
-                            nome='Compra de Peças',
-                            tipo='despesa'
-                        )
-                    except CategoriaFinanceira.DoesNotExist:
-                        # Criar categoria se não existir
-                        categoria_compra_pecas = CategoriaFinanceira.objects.create(
-                            nome='Compra de Peças',
-                            tipo='despesa',
-                            descricao='Despesas com compra de peças para estoque',
-                            cor='#e67e22'
-                        )
-                    
-                    valor_total = movimentacao.quantidade * movimentacao.valor_unitario
-                    
-                    Transacao.objects.create(
-                        tipo='despesa',
-                        categoria=categoria_compra_pecas,
-                        descricao=f'Compra de estoque - {peca.descricao}',
-                        valor=valor_total,
-                        data_vencimento=timezone.now().date(),
-                        data_pagamento=timezone.now().date(),
-                        status='pago',
-                        fornecedor=movimentacao.fornecedor,
-                        usuario=request.user,
-                        observacoes=f'Peça: {peca.codigo_interno} - Qtd: {movimentacao.quantidade} - Valor unitário: R$ {movimentacao.valor_unitario}'
-                    )
-                    messages.success(request, 'Movimentação registrada e despesa lançada no financeiro!')
-                else:
-                    messages.success(request, 'Movimentação registrada com sucesso!')
-                    
-            elif movimentacao.tipo == 'saida':
-                peca.quantidade_estoque -= movimentacao.quantidade
-                messages.success(request, 'Movimentação registrada com sucesso!')
-            else:  # ajuste
-                peca.quantidade_estoque = movimentacao.quantidade
-                messages.success(request, 'Movimentação registrada com sucesso!')
             
-            peca.save()
+            # Se for entrada, gera lançamento no financeiro
+            if movimentacao.tipo == 'entrada' and movimentacao.valor_unitario > 0:
+                try:
+                    categoria_compra_pecas = CategoriaFinanceira.objects.get(
+                        nome='Compra de Peças',
+                        tipo='despesa'
+                    )
+                except CategoriaFinanceira.DoesNotExist:
+                    categoria_compra_pecas = CategoriaFinanceira.objects.create(
+                        nome='Compra de Peças',
+                        tipo='despesa',
+                        descricao='Despesas com compra de peças para estoque',
+                        cor='#e67e22'
+                    )
+                
+                valor_total = movimentacao.quantidade * movimentacao.valor_unitario
+                
+                Transacao.objects.create(
+                    tipo='despesa',
+                    categoria=categoria_compra_pecas,
+                    descricao=f'Compra de estoque - {peca.nome}',
+                    valor=valor_total,
+                    data_vencimento=timezone.now().date(),
+                    data_pagamento=timezone.now().date(),
+                    status='pago',
+                    fornecedor=movimentacao.fornecedor,
+                    usuario=request.user,
+                    observacoes=f'Peça: {peca.codigo_interno} - Qtd: {movimentacao.quantidade}'
+                )
+                messages.success(request, 'Movimentação e despesa financeira registradas!')
+            else:
+                messages.success(request, 'Movimentação registrada com sucesso!')
             
             return redirect('peca_detalhe', pk=peca.pk)
     else:
