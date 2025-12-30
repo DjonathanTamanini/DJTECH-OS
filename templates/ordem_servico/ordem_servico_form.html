@@ -109,22 +109,41 @@
                         </div>
                     </div>
                     <div class="row">
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="form-label fw-bold">Status *</label>
                             {{ form.status }}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label fw-bold">Prioridade *</label>
+                            {{ form.prioridade }}
+                        </div>
+                        <div class="col-md-3 mb-3">
                             <label class="form-label">Técnico</label>
                             {{ form.tecnico }}
                         </div>
-                        <div class="col-md-4 mb-3">
+                        <div class="col-md-3 mb-3">
                             <label class="form-label">Previsão Entrega</label>
                             {{ form.data_previsao }}
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Garantia (dias)</label>
+                            {{ form.garantia_dias }}
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Observações Internas</label>
+                            {{ form.observacoes_internas }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Observações para o Cliente</label>
+                            {{ form.observacoes_cliente }}
+                        </div>
+                    </div>
                 </div>
             </div>
-
             <div class="card mb-3 border-info shadow-sm">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-2">
                     <h6 class="mb-0"><i class="bi bi-box-seam"></i> Peças e Insumos Utilizados</h6>
@@ -227,29 +246,6 @@
     </div>
 </div>
 
-<div id="empty-form-template" style="display:none;">
-    <tr class="peca-form-row">
-        <input type="hidden" name="pecas-__prefix__-id" id="id_pecas-__prefix__-id">
-        <td class="ps-3">
-            <div class="d-none">
-                <select name="pecas-__prefix__-peca" class="form-select" id="id_pecas-__prefix__-peca"></select>
-            </div>
-            <input type="text" class="form-control-plaintext fw-bold peca-nome-display" readonly>
-        </td>
-        <td>
-            <input type="number" name="pecas-__prefix__-quantidade" value="1" min="1" class="form-control form-control-sm" id="id_pecas-__prefix__-quantidade">
-        </td>
-        <td>
-            <input type="number" name="pecas-__prefix__-preco_unitario" step="0.01" class="form-control form-control-sm" id="id_pecas-__prefix__-preco_unitario">
-        </td>
-        <td><span class="fw-bold text-muted small peca-subtotal">R$ 0,00</span></td>
-        <td class="text-center">
-            <div class="d-none"><input type="checkbox" name="pecas-__prefix__-DELETE" id="id_pecas-__prefix__-DELETE"></div>
-            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row"><i class="bi bi-trash"></i></button>
-        </td>
-    </tr>
-</div>
-
 <div class="modal fade" id="modalBuscaPeca" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content shadow-lg">
@@ -328,13 +324,21 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (inputBuscaCli) {
+        let timeoutBusca = null;
         inputBuscaCli.addEventListener('input', function() {
             const termo = this.value.trim();
+            
+            // Limpar timeout anterior
+            if (timeoutBusca) clearTimeout(timeoutBusca);
+            
             if (termo.length < 2) { 
                 resBuscaCli.style.display = 'none'; 
                 resBuscaCli.innerHTML = '';
                 return; 
             }
+            
+            // Aguardar 500ms antes de buscar
+            timeoutBusca = setTimeout(() => {
             
             fetch(`${URL_BUSCA_CLIENTE}?termo=${encodeURIComponent(termo)}`)
                 .then(r => r.json())
@@ -352,10 +356,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         btn.type = "button";
                         btn.onclick = (e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             inputCliId.value = c.id;
                             document.getElementById('cliente-nome').innerText = c.nome;
                             document.getElementById('cliente-info').innerText = c.cpf_cnpj;
                             resBuscaCli.style.display = 'none';
+                            resBuscaCli.innerHTML = '';
                             inputBuscaCli.value = '';
                             inicializarEstadoCliente();
                         };
@@ -367,8 +373,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Erro ao buscar clientes:', err);
                     resBuscaCli.style.display = 'none';
                 });
+            }, 500); // Aguarda 500ms
         });
     }
+
+    // Fechar lista de clientes ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!inputBuscaCli.contains(e.target) && !resBuscaCli.contains(e.target)) {
+            resBuscaCli.style.display = 'none';
+        }
+    });
 
     if (btnTrocarCliente) {
         btnTrocarCliente.onclick = (e) => {
@@ -477,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
 
-    // ================= 3. ADICIONAR ITEM (CORRIGIDO) =================
+    // ================= 3. ADICIONAR ITEM (CORRIGIDO - SOLUÇÃO DEFINITIVA) =================
     function adicionarItemAoFormset(id, nome, preco, qtd) {
         console.log('=== INICIANDO ADIÇÃO DE PEÇA ===');
         console.log('Parâmetros:', {id, nome, preco, qtd});
@@ -497,79 +511,46 @@ document.addEventListener('DOMContentLoaded', function() {
         const count = parseInt(totalFormsInput.value);
         console.log('Índice atual do formset:', count);
         
-        const templateEl = document.getElementById('empty-form-template');
-        if (!templateEl) {
-            console.error('ERRO: Template não encontrado');
-            alert('Erro: Template de linha não encontrado');
-            return;
-        }
+        // CRIAR A LINHA DIRETAMENTE (SEM USAR TEMPLATE)
+        const newRow = document.createElement('tr');
+        newRow.className = 'peca-form-row';
         
-        // Criar nova linha a partir do template
-        const template = templateEl.innerHTML;
-        const newRowHtml = template.replace(/__prefix__/g, count);
+        newRow.innerHTML = `
+            <input type="hidden" name="pecas-${count}-id" id="id_pecas-${count}-id">
+            <td class="ps-3">
+                <div class="d-none">
+                    <select name="pecas-${count}-peca" class="form-select" id="id_pecas-${count}-peca">
+                        <option value="${id}" selected>${nome}</option>
+                    </select>
+                </div>
+                <input type="text" class="form-control-plaintext fw-bold peca-nome-display" value="${nome}" readonly>
+            </td>
+            <td>
+                <input type="number" name="pecas-${count}-quantidade" value="${qtd}" min="1" class="form-control form-control-sm" id="id_pecas-${count}-quantidade">
+            </td>
+            <td>
+                <input type="number" name="pecas-${count}-preco_unitario" value="${preco}" step="0.01" class="form-control form-control-sm" id="id_pecas-${count}-preco_unitario">
+            </td>
+            <td>
+                <span class="fw-bold text-muted small peca-subtotal">R$ 0,00</span>
+            </td>
+            <td class="text-center">
+                <div class="d-none">
+                    <input type="checkbox" name="pecas-${count}-DELETE" id="id_pecas-${count}-DELETE">
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
         
-        console.log('HTML da nova linha gerado');
+        console.log('Linha criada com sucesso');
         
-        // Criar elemento temporário para parsear o HTML
-        const tempContainer = document.createElement('tbody');
-        tempContainer.innerHTML = newRowHtml.trim();
-        const newRow = tempContainer.querySelector('tr');
-        
-        if (!newRow) {
-            console.error('ERRO: Não foi possível criar a linha TR');
-            console.log('HTML gerado:', newRowHtml);
-            alert('Erro ao criar nova linha na tabela');
-            return;
-        }
-        
-        console.log('Linha TR criada com sucesso');
-        
-        // Preencher o select oculto
-        const selectName = `${FORM_PREFIX}-${count}-peca`;
-        const select = newRow.querySelector(`select[name="${selectName}"]`);
-        
-        if (select) {
-            console.log('Select encontrado:', selectName);
-            select.innerHTML = '';
-            const option = document.createElement('option');
-            option.value = id;
-            option.textContent = nome;
-            option.selected = true;
-            select.appendChild(option);
-            console.log('Option adicionada ao select');
-        } else {
-            console.error('ERRO: Select não encontrado:', selectName);
-        }
-        
-        // Preencher display do nome
-        const displayInput = newRow.querySelector('.peca-nome-display');
-        if (displayInput) {
-            displayInput.value = nome;
-            console.log('Nome da peça preenchido');
-        }
-        
-        // Preencher quantidade
-        const qtdName = `${FORM_PREFIX}-${count}-quantidade`;
-        const qtdInput = newRow.querySelector(`input[name="${qtdName}"]`);
-        if (qtdInput) {
-            qtdInput.value = qtd;
-            console.log('Quantidade preenchida:', qtd);
-        }
-        
-        // Preencher preço (converter ponto para vírgula se necessário)
-        const precoName = `${FORM_PREFIX}-${count}-preco_unitario`;
-        const precoInput = newRow.querySelector(`input[name="${precoName}"]`);
-        if (precoInput) {
-            // O preço vem como "183.00", mantemos com ponto
-            precoInput.value = preco;
-            console.log('Preço preenchido:', preco);
-        }
-        
-        // Adicionar a linha ao tbody
+        // Adicionar ao tbody
         formsetBody.appendChild(newRow);
         console.log('Linha adicionada ao DOM');
         
-        // Incrementar contador de forms
+        // Incrementar contador
         totalFormsInput.value = count + 1;
         console.log('Contador incrementado para:', count + 1);
         
@@ -651,7 +632,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (qtdInput && vlrInput) {
                     const qtd = parseFloat(qtdInput.value) || 0;
-                    // Aceitar tanto ponto quanto vírgula
                     const vlrStr = vlrInput.value.toString().replace(',', '.');
                     const vlr = parseFloat(vlrStr) || 0;
                     const sub = qtd * vlr;
@@ -686,6 +666,78 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const osForm = document.getElementById('osForm');
     if (osForm) {
+        // Validar antes de submeter
+        osForm.addEventListener('submit', function(e) {
+            console.log('=== VALIDAÇÃO DO FORMULÁRIO ===');
+            
+            // Verificar se tem cliente
+            if (!inputCliId || !inputCliId.value) {
+                e.preventDefault();
+                alert('Por favor, selecione um cliente!');
+                console.error('Cliente não selecionado');
+                return false;
+            }
+            console.log('✓ Cliente OK:', inputCliId.value);
+            
+            // Normalizar campos decimais (converter vírgula para ponto)
+            const camposDecimais = osForm.querySelectorAll('input[type="number"][step="0.01"]');
+            camposDecimais.forEach(input => {
+                if (input.value) {
+                    const valorOriginal = input.value;
+                    input.value = input.value.replace(',', '.');
+                    if (valorOriginal !== input.value) {
+                        console.log(`Normalizado ${input.name}: "${valorOriginal}" → "${input.value}"`);
+                    }
+                }
+            });
+            
+            // Validar peças do formset
+            const totalForms = parseInt(totalFormsInput.value);
+            console.log('Total de forms no formset:', totalForms);
+            
+            let pecasValidas = 0;
+            for (let i = 0; i < totalForms; i++) {
+                const pecaSelect = document.querySelector(`select[name="pecas-${i}-peca"]`);
+                const qtdInput = document.querySelector(`input[name="pecas-${i}-quantidade"]`);
+                const precoInput = document.querySelector(`input[name="pecas-${i}-preco_unitario"]`);
+                const deleteCheck = document.querySelector(`input[name="pecas-${i}-DELETE"]`);
+                
+                if (deleteCheck && deleteCheck.checked) {
+                    console.log(`Peça ${i}: marcada para deletar`);
+                    continue;
+                }
+                
+                if (pecaSelect && pecaSelect.value) {
+                    console.log(`Peça ${i}:`, {
+                        peca: pecaSelect.value,
+                        qtd: qtdInput?.value,
+                        preco: precoInput?.value
+                    });
+                    
+                    // Validar campos obrigatórios
+                    if (!qtdInput || !qtdInput.value || qtdInput.value <= 0) {
+                        e.preventDefault();
+                        alert(`Erro: Quantidade inválida na peça ${i + 1}`);
+                        console.error(`Quantidade inválida na peça ${i}`);
+                        return false;
+                    }
+                    
+                    if (!precoInput || !precoInput.value || precoInput.value <= 0) {
+                        e.preventDefault();
+                        alert(`Erro: Preço inválido na peça ${i + 1}`);
+                        console.error(`Preço inválido na peça ${i}`);
+                        return false;
+                    }
+                    
+                    pecasValidas++;
+                }
+            }
+            
+            console.log(`✓ Peças válidas: ${pecasValidas}`);
+            console.log('=== VALIDAÇÃO CONCLUÍDA - SUBMETENDO ===');
+            return true;
+        });
+        
         osForm.addEventListener('input', (e) => {
             if (e.target.matches('input')) {
                 atualizarTotalGeral();
@@ -696,7 +748,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // ================= INICIALIZAÇÃO =================
     inicializarEstadoCliente();
     verificarVazio();
-    atualizarTotalGeral();
+    
+    // Calcular totais das peças existentes (ao carregar página)
+    setTimeout(() => {
+        atualizarTotalGeral();
+    }, 100);
     
     console.log('✅ Sistema de OS inicializado com sucesso');
 });

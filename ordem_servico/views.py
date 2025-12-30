@@ -44,32 +44,57 @@ def ordem_servico_criar(request):
         form = OrdemServicoForm(request.POST)
         formset = PecaUtilizadaFormSet(request.POST, prefix='pecas')
         
+        print("=== DEBUG CRIAR OS ===")
+        print(f"Form válido: {form.is_valid()}")
+        print(f"Formset válido: {formset.is_valid()}")
+        
+        if not form.is_valid():
+            print("Erros do form:", form.errors)
+            for field, errors in form.errors.items():
+                messages.error(request, f"{field}: {', '.join(errors)}")
+        
+        if not formset.is_valid():
+            print("Erros do formset:", formset.errors)
+            print("Erros não-form:", formset.non_form_errors())
+            for i, form_peca in enumerate(formset):
+                if form_peca.errors:
+                    print(f"Erros no form {i}:", form_peca.errors)
+                    for field, errors in form_peca.errors.items():
+                        messages.error(request, f"Peça {i+1} - {field}: {', '.join(errors)}")
+        
         if form.is_valid() and formset.is_valid():
-            os = form.save(commit=False)
-            os.atendente = request.user
-            os.save()
-            
-            formset.instance = os
-            formset.save()
-            
-            # Baixa no estoque
-            for form_peca in formset:
-                if form_peca.cleaned_data and not form_peca.cleaned_data.get('DELETE', False):
-                    peca = form_peca.cleaned_data['peca']
-                    qtd = form_peca.cleaned_data['quantidade']
-                    
+            try:
+                os = form.save(commit=False)
+                os.atendente = request.user
+                os.save()
+                print(f"OS criada: {os.id}")
+                
+                # Salvar peças
+                formset.instance = os
+                pecas_salvas = formset.save()
+                print(f"Peças salvas: {len(pecas_salvas)}")
+                
+                # Baixa no estoque
+                for peca_obj in pecas_salvas:
+                    print(f"Criando movimentação para: {peca_obj.peca.nome}")
                     MovimentacaoEstoque.objects.create(
-                        peca=peca,
+                        peca=peca_obj.peca,
                         tipo='saida',
-                        quantidade=qtd,
-                        valor_unitario=peca.preco_venda,
+                        quantidade=peca_obj.quantidade,
+                        valor_unitario=peca_obj.preco_unitario,
                         ordem_servico=os,
                         usuario=request.user,
                         observacoes=f"Saída automática via OS {os.id}"
                     )
-
-            messages.success(request, 'Ordem de Serviço criada com sucesso!')
-            return redirect('ordem_servico_detalhe', pk=os.pk)
+                
+                messages.success(request, f'Ordem de Serviço #{os.id} criada com sucesso!')
+                return redirect('ordem_servico_detalhe', pk=os.pk)
+                
+            except Exception as e:
+                print(f"ERRO ao salvar: {e}")
+                import traceback
+                traceback.print_exc()
+                messages.error(request, f'Erro ao salvar: {str(e)}')
     else:
         form = OrdemServicoForm()
         formset = PecaUtilizadaFormSet(prefix='pecas')
@@ -89,11 +114,34 @@ def ordem_servico_editar(request, pk):
         form = OrdemServicoForm(request.POST, instance=os)
         formset = PecaUtilizadaFormSet(request.POST, instance=os, prefix='pecas')
         
+        print("=== DEBUG EDITAR OS ===")
+        print(f"Form válido: {form.is_valid()}")
+        print(f"Formset válido: {formset.is_valid()}")
+        
+        if not form.is_valid():
+            print("Erros do form:", form.errors)
+            for field, errors in form.errors.items():
+                messages.error(request, f"{field}: {', '.join(errors)}")
+        
+        if not formset.is_valid():
+            print("Erros do formset:", formset.errors)
+            for i, form_peca in enumerate(formset):
+                if form_peca.errors:
+                    print(f"Erros no form {i}:", form_peca.errors)
+                    for field, errors in form_peca.errors.items():
+                        messages.error(request, f"Peça {i+1} - {field}: {', '.join(errors)}")
+        
         if form.is_valid() and formset.is_valid():
-            form.save()
-            formset.save()
-            messages.success(request, 'Ordem de Serviço atualizada com sucesso!')
-            return redirect('ordem_servico_detalhe', pk=os.pk)
+            try:
+                form.save()
+                formset.save()
+                messages.success(request, 'Ordem de Serviço atualizada com sucesso!')
+                return redirect('ordem_servico_detalhe', pk=os.pk)
+            except Exception as e:
+                print(f"ERRO ao salvar: {e}")
+                import traceback
+                traceback.print_exc()
+                messages.error(request, f'Erro ao salvar: {str(e)}')
     else:
         form = OrdemServicoForm(instance=os)
         formset = PecaUtilizadaFormSet(instance=os, prefix='pecas')
