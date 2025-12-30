@@ -16,26 +16,31 @@ def dashboard(request):
     inicio_mes = hoje.replace(day=1)
     
     # --- ESTATÍSTICAS GERAIS DE OS ---
+    # Status finalizados conforme novo models.py: 'entregue', 'cancelado', 'pronto'
     total_os_abertas = OrdemServico.objects.exclude(
-        status__in=['entregue', 'cancelado']
+        status__in=['entregue', 'cancelado', 'pronto']
     ).count()
     
+    # Correção: O status no novo model é 'aprovacao' (não 'aguardando_aprovacao')
     os_aguardando_aprovacao = OrdemServico.objects.filter(
-        status='aguardando_aprovacao'
+        status='aprovacao'
     ).count()
     
+    # Correção: O status no novo model é 'reparo' (não 'em_reparo')
     os_em_reparo = OrdemServico.objects.filter(
-        status='em_reparo'
+        status='reparo'
     ).count()
     
+    # Correção do Erro Crítico: 'prazo_estimado' virou 'data_previsao'
+    # Ajustado também a lista de status para os códigos novos
     os_atrasadas = OrdemServico.objects.filter(
-        prazo_estimado__lt=hoje,
-        status__in=['avaliacao', 'aprovado', 'em_reparo']
+        data_previsao__lt=hoje
+    ).exclude(
+        status__in=['pronto', 'entregue', 'cancelado']
     ).count()
     
     # --- CÁLCULO DE ESTOQUE BAIXO (SOLUÇÃO DINÂMICA) ---
-    # Como não usamos campo fixo de quantidade, calculamos Saldo = Entradas - Saídas
-    # Coalesce é usado para transformar valores nulos em 0.
+    # Verifica se existem peças ativas com saldo abaixo do mínimo
     pecas_estoque = Peca.objects.annotate(
         total_entrada=Coalesce(
             Sum('movimentacoes__quantidade', filter=Q(movimentacoes__tipo='entrada')),
@@ -48,14 +53,15 @@ def dashboard(request):
             output_field=IntegerField()
         )
     ).annotate(
-        # Criamos o campo virtual 'saldo_atual' para comparar com o mínimo
+        # Saldo = Entradas - Saídas
         saldo_atual=F('total_entrada') - F('total_saida')
     )
 
-    # Filtramos peças ativas que atingiram ou estão abaixo da quantidade mínima
+    # Nota: Certifique-se que o model Peca tem o campo 'quantidade_minima'
+    # Se não tiver, altere para um número fixo, ex: saldo_atual__lte=5
     pecas_estoque_baixo_count = pecas_estoque.filter(
         ativo=True,
-        saldo_atual__lte=F('quantidade_minima')
+        saldo_atual__lte=F('quantidade_minima') 
     ).count()
     
     # --- OS DO MÊS ---
@@ -63,9 +69,8 @@ def dashboard(request):
         data_entrada__gte=inicio_mes
     ).count()
     
-    # --- ÚLTIMAS OS (CORREÇÃO DO FIELD ERROR) ---
-    # Removido 'equipamento' do select_related pois ele não é uma ForeignKey.
-    # Mantemos 'cliente' para otimizar a performance da lista.
+    # --- ÚLTIMAS OS ---
+    # Traz as 5 últimas, otimizando a consulta do cliente
     ultimas_os = OrdemServico.objects.select_related(
         'cliente'
     ).all().order_by('-data_entrada')[:5]

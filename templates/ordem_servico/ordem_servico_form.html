@@ -1,4 +1,6 @@
 {% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
 
 {% block title %}{{ titulo }} - DJTECH-OS{% endblock %}
 
@@ -13,6 +15,15 @@
         <form method="post" novalidate id="osForm">
             {% csrf_token %}
             
+            {% if form.errors or pecas_formset.errors %}
+            <div class="alert alert-danger alert-dismissible fade show">
+                <strong><i class="bi bi-exclamation-triangle-fill"></i> Atenção:</strong> Verifique os erros abaixo.
+                {{ form.non_field_errors }}
+                {{ pecas_formset.non_form_errors }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endif %}
+            
             <div class="card mb-3 border-primary shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0"><i class="bi bi-person"></i> Identificação do Cliente</h5>
@@ -22,25 +33,35 @@
                         <div class="col-md-12 mb-3">
                             <label class="form-label fw-bold">Cliente *</label>
                             
-                            <div class="input-group mb-2" id="campo-busca-cliente" {% if ordem %}style="display: none;"{% endif %}>
+                            <div class="input-group mb-2" id="area-busca-cliente">
                                 <span class="input-group-text"><i class="bi bi-search"></i></span>
                                 <input type="text" id="busca-cliente" class="form-control" placeholder="Digite nome ou CPF/CNPJ do cliente..." autocomplete="off">
                             </div>
                             
                             <div id="resultados-busca" class="list-group mb-2 shadow" style="display: none; position: absolute; z-index: 1000; width: 95%;"></div>
                             
-                            <div id="cliente-selecionado" {% if not ordem %}style="display: none;"{% endif %}>
+                            <div id="area-cliente-selecionado" style="display: none;">
                                 <div class="alert alert-info d-flex justify-content-between align-items-center mb-0">
                                     <div>
-                                        <h5 id="cliente-nome" class="mb-1">{% if ordem %}{{ ordem.cliente.nome }}{% endif %}</h5>
-                                        <small id="cliente-info" class="text-muted">{% if ordem %}{{ ordem.cliente.cpf_cnpj }}{% endif %}</small>
+                                        <h5 id="cliente-nome" class="mb-1">
+                                            {{ form.instance.cliente.nome|default:ordem.cliente.nome }}
+                                        </h5>
+                                        <small id="cliente-info" class="text-muted">
+                                            {{ form.instance.cliente.cpf_cnpj|default:ordem.cliente.cpf_cnpj }}
+                                        </small>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" id="limpar-cliente">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="btn-trocar-cliente">
                                         <i class="bi bi-arrow-left-right"></i> Trocar Cliente
                                     </button>
                                 </div>
                             </div>
-                            <input type="hidden" name="cliente" id="id_cliente" required value="{% if ordem %}{{ ordem.cliente.id }}{% endif %}">
+                            
+                            <input type="hidden" name="cliente" id="id_cliente" required 
+                                   value="{{ form.cliente.value|default:form.instance.cliente.pk|default:'' }}">
+                            
+                            {% if form.cliente.errors %}
+                                <div class="text-danger small mt-1">{{ form.cliente.errors }}</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -53,7 +74,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Tipo de Equipamento *</label>
+                            <label class="form-label">Tipo *</label>
                             {{ form.tipo_equipamento }}
                         </div>
                         <div class="col-md-3 mb-3">
@@ -65,7 +86,7 @@
                             {{ form.modelo }}
                         </div>
                         <div class="col-md-3 mb-3">
-                            <label class="form-label">Nº de Série / IMEI</label>
+                            <label class="form-label">Nº Série / IMEI</label>
                             {{ form.numero_serie }}
                         </div>
                     </div>
@@ -79,31 +100,26 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-danger">Defeito Relatado pelo Cliente *</label>
-                            {{ form.defeito_relatado }}
+                            <label class="form-label fw-bold text-danger">Defeito Relatado *</label>
+                            {{ form.defeito_cliente }}
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold text-primary">Diagnóstico Técnico (Defeito Encontrado)</label>
-                            {{ form.defeito_encontrado }}
+                            <label class="form-label fw-bold text-primary">Diagnóstico Técnico</label>
+                            {{ form.diagnostico_tecnico }}
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="card mb-3 bg-light border-0 shadow-sm">
-                <div class="card-body">
                     <div class="row">
                         <div class="col-md-4 mb-3">
-                            <label class="form-label fw-bold">Status da Ordem *</label>
+                            <label class="form-label fw-bold">Status *</label>
                             {{ form.status }}
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Técnico Responsável</label>
+                            <label class="form-label">Técnico</label>
                             {{ form.tecnico }}
                         </div>
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Previsão de Entrega</label>
-                            {{ form.prazo_estimado }}
+                            <label class="form-label">Previsão Entrega</label>
+                            {{ form.data_previsao }}
                         </div>
                     </div>
                 </div>
@@ -113,55 +129,62 @@
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center py-2">
                     <h6 class="mb-0"><i class="bi bi-box-seam"></i> Peças e Insumos Utilizados</h6>
                     <button type="button" class="btn btn-light btn-sm fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalBuscaPeca">
-                        <i class="bi bi-search"></i> BUSCAR NO ESTOQUE
+                        <i class="bi bi-plus-lg"></i> ADICIONAR PEÇA
                     </button>
                 </div>
+                
                 <div class="card-body p-0">
-                    {{ formset.management_form }}
+                    {{ pecas_formset.management_form }}
+                    
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0 align-middle">
+                        <table class="table table-hover table-sm mb-0 align-middle">
                             <thead class="table-light">
                                 <tr>
-                                    <th style="width: 45%; padding-left: 15px;">Item</th>
-                                    <th style="width: 15%;">Quantidade</th>
-                                    <th style="width: 20%;">Vlr. Unitário (R$)</th>
+                                    <th style="width: 40%; padding-left: 15px;">Peça / Item</th>
+                                    <th style="width: 15%;">Qtd</th>
+                                    <th style="width: 20%;">Preço Unit. (R$)</th>
                                     <th style="width: 15%;">Subtotal</th>
-                                    <th style="width: 5%; text-align: center;">Ação</th>
+                                    <th style="width: 10%; text-align: center;">Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="pecas-formset">
-                                {% for form_peca in formset %}
-                                    <tr class="peca-form">
+                            <tbody id="pecas-formset-body">
+                                {% for form_peca in pecas_formset %}
+                                    <tr class="peca-form-row">
                                         {{ form_peca.id }}
+                                        
                                         <td class="ps-3">
-                                            {{ form_peca.peca }}
+                                            <div class="d-none">{{ form_peca.peca }}</div>
+                                            <input type="text" class="form-control-plaintext fw-bold peca-nome-display" 
+                                                   value="{{ form_peca.instance.peca.nome|default:'' }}" readonly>
+                                            
+                                            {% if form_peca.peca.errors %}
+                                                <div class="text-danger small">{{ form_peca.peca.errors }}</div>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             {{ form_peca.quantidade }}
                                         </td>
                                         <td>
-                                            {{ form_peca.valor_unitario }}
+                                            {{ form_peca.preco_unitario }}
                                         </td>
                                         <td>
                                             <span class="fw-bold text-muted small peca-subtotal">R$ 0,00</span>
                                         </td>
                                         <td class="text-center">
-                                            <div class="form-check d-inline-block">
-                                                {{ form_peca.DELETE }}
-                                                <label class="form-check-label text-danger" for="{{ form_peca.DELETE.id_for_label }}">
-                                                    <i class="bi bi-trash"></i>
-                                                </label>
-                                            </div>
+                                            <div class="d-none">{{ form_peca.DELETE }}</div>
+                                            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row" title="Remover">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="p-2 bg-light border-top">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="add-peca">
-                            <i class="bi bi-plus-lg"></i> Adicionar Linha Manual
-                        </button>
+                    
+                    <div id="msg-sem-pecas" class="text-center py-4 text-muted" style="display: none;">
+                        <i class="bi bi-box-seam" style="font-size: 2rem;"></i>
+                        <p class="mb-0">Nenhuma peça adicionada.</p>
                     </div>
                 </div>
             </div>
@@ -174,11 +197,11 @@
                     <div class="row align-items-center">
                         <div class="col-md-3 mb-3">
                             <label class="form-label">Mão de Obra (R$)</label>
-                            {{ form.valor_mao_obra }}
+                            {{ form.valor_mao_de_obra }}
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label">Total Peças (R$)</label>
-                            {{ form.valor_pecas }}
+                            <input type="text" id="visual_total_pecas" class="form-control" readonly value="0,00">
                         </div>
                         <div class="col-md-3 mb-3">
                             <label class="form-label text-danger">Desconto (R$)</label>
@@ -186,7 +209,7 @@
                         </div>
                         <div class="col-md-3">
                             <div class="alert alert-success border-success mb-0 py-2 text-center">
-                                <small class="d-block text-uppercase fw-bold">Valor Total da OS</small>
+                                <small class="d-block text-uppercase fw-bold">Valor Total</small>
                                 <h3 class="mb-0" id="valor-total-exibicao">R$ 0,00</h3>
                             </div>
                         </div>
@@ -195,44 +218,64 @@
             </div>
 
             <div class="card mb-5 bg-transparent border-0">
-                <div class="card-body p-0 d-flex justify-content-between">
-                    <a href="{% url 'ordem_servico_lista' %}" class="btn btn-secondary btn-lg shadow">
-                        <i class="bi bi-x-circle"></i> Cancelar
-                    </a>
-                    <button type="submit" class="btn btn-success btn-lg shadow px-5">
-                        <i class="bi bi-check-circle"></i> SALVAR ORDEM DE SERVIÇO
-                    </button>
+                <div class="card-body p-0 d-flex justify-content-end gap-2">
+                    <a href="{% url 'ordem_servico_lista' %}" class="btn btn-secondary btn-lg shadow">Cancelar</a>
+                    <button type="submit" class="btn btn-success btn-lg shadow px-5">SALVAR OS</button>
                 </div>
             </div>
         </form>
     </div>
 </div>
 
+<div id="empty-form-template" style="display:none;">
+    <tr class="peca-form-row">
+        <input type="hidden" name="pecas-__prefix__-id" id="id_pecas-__prefix__-id">
+        <td class="ps-3">
+            <div class="d-none">
+                <select name="pecas-__prefix__-peca" class="form-select" id="id_pecas-__prefix__-peca"></select>
+            </div>
+            <input type="text" class="form-control-plaintext fw-bold peca-nome-display" readonly>
+        </td>
+        <td>
+            <input type="number" name="pecas-__prefix__-quantidade" value="1" min="1" class="form-control form-control-sm" id="id_pecas-__prefix__-quantidade">
+        </td>
+        <td>
+            <input type="number" name="pecas-__prefix__-preco_unitario" step="0.01" class="form-control form-control-sm" id="id_pecas-__prefix__-preco_unitario">
+        </td>
+        <td><span class="fw-bold text-muted small peca-subtotal">R$ 0,00</span></td>
+        <td class="text-center">
+            <div class="d-none"><input type="checkbox" name="pecas-__prefix__-DELETE" id="id_pecas-__prefix__-DELETE"></div>
+            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-row"><i class="bi bi-trash"></i></button>
+        </td>
+    </tr>
+</div>
+
 <div class="modal fade" id="modalBuscaPeca" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content shadow-lg">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bi bi-search"></i> Pesquisar Item no Estoque</h5>
+                <h5 class="modal-title"><i class="bi bi-search"></i> Pesquisar Peça</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="input-group mb-3">
-                    <input type="text" id="inputBuscaModal" class="form-control" placeholder="Procure por nome, código ou part number...">
+                    <input type="text" id="inputBuscaModal" class="form-control" placeholder="Nome, código ou part number..." autofocus>
                     <button class="btn btn-info text-white" type="button" id="btnFazerBusca">Buscar</button>
                 </div>
-                <div class="table-responsive" style="max-height: 400px;">
-                    <table class="table table-hover table-sm">
+                <div class="table-responsive" style="max-height: 350px;">
+                    <table class="table table-hover table-sm align-middle">
                         <thead class="table-dark">
                             <tr>
                                 <th>Código</th>
                                 <th>Descrição</th>
                                 <th>Saldo</th>
-                                <th>Venda</th>
-                                <th>Ação</th>
+                                <th>Preço (R$)</th>
+                                <th style="width: 80px;">Qtd</th>
+                                <th style="width: 100px;">Ação</th>
                             </tr>
                         </thead>
                         <tbody id="listaResultadosPecas">
-                            <tr><td colspan="5" class="text-center text-muted py-4">Utilize o campo de busca acima</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4">Digite algo e clique em Buscar</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -244,164 +287,419 @@
 
 {% block extra_js %}
 <script>
+
 document.addEventListener('DOMContentLoaded', function() {
     
-    // 1. BUSCA DINÂMICA DE CLIENTE
+    // --- URLs e Configurações ---
+    const URL_BUSCA_CLIENTE = "{% url 'buscar_clientes_ajax' %}";
+    const URL_BUSCA_PECA = "{% url 'api_buscar_pecas_json' %}";
+    const FORM_PREFIX = 'pecas'; 
+    
+    // Elementos DOM
+    const totalFormsInput = document.getElementById(`id_${FORM_PREFIX}-TOTAL_FORMS`);
+    const formsetBody = document.getElementById('pecas-formset-body');
+    const msgSemPecas = document.getElementById('msg-sem-pecas');
+
+    console.log('Inicializando sistema...', {
+        totalFormsInput: !!totalFormsInput,
+        formsetBody: !!formsetBody,
+        msgSemPecas: !!msgSemPecas
+    });
+
+    // ================= 1. CLIENTE =================
     const inputBuscaCli = document.getElementById('busca-cliente');
     const resBuscaCli = document.getElementById('resultados-busca');
-    const cliSelArea = document.getElementById('cliente-selecionado');
+    const areaCliSel = document.getElementById('area-cliente-selecionado');
+    const areaBuscaCli = document.getElementById('area-busca-cliente');
     const inputCliId = document.getElementById('id_cliente');
+    const btnTrocarCliente = document.getElementById('btn-trocar-cliente');
+
+    function inicializarEstadoCliente() {
+        const temCliente = inputCliId && inputCliId.value && inputCliId.value.trim() !== '';
+        console.log('Estado cliente:', temCliente, inputCliId?.value);
+        
+        if (temCliente) {
+            if (areaCliSel) areaCliSel.style.display = 'block';
+            if (areaBuscaCli) areaBuscaCli.style.display = 'none';
+        } else {
+            if (areaCliSel) areaCliSel.style.display = 'none';
+            if (areaBuscaCli) areaBuscaCli.style.display = 'flex';
+        }
+    }
 
     if (inputBuscaCli) {
         inputBuscaCli.addEventListener('input', function() {
-            const termo = this.value;
-            if (termo.length < 2) { resBuscaCli.style.display = 'none'; return; }
+            const termo = this.value.trim();
+            if (termo.length < 2) { 
+                resBuscaCli.style.display = 'none'; 
+                resBuscaCli.innerHTML = '';
+                return; 
+            }
             
-            fetch(`/ordem-servico/buscar-clientes/?termo=${encodeURIComponent(termo)}`)
+            fetch(`${URL_BUSCA_CLIENTE}?termo=${encodeURIComponent(termo)}`)
                 .then(r => r.json())
                 .then(data => {
                     resBuscaCli.innerHTML = '';
+                    if(!data.clientes || data.clientes.length === 0) { 
+                        resBuscaCli.style.display = 'none'; 
+                        return; 
+                    }
+                    
                     data.clientes.forEach(c => {
                         const btn = document.createElement('button');
                         btn.className = 'list-group-item list-group-item-action py-2';
                         btn.innerHTML = `<strong>${c.nome}</strong> <small class="text-muted">(${c.cpf_cnpj})</small>`;
+                        btn.type = "button";
                         btn.onclick = (e) => {
                             e.preventDefault();
                             inputCliId.value = c.id;
                             document.getElementById('cliente-nome').innerText = c.nome;
                             document.getElementById('cliente-info').innerText = c.cpf_cnpj;
-                            cliSelArea.style.display = 'block';
-                            document.getElementById('campo-busca-cliente').style.display = 'none';
                             resBuscaCli.style.display = 'none';
+                            inputBuscaCli.value = '';
+                            inicializarEstadoCliente();
                         };
                         resBuscaCli.appendChild(btn);
                     });
                     resBuscaCli.style.display = 'block';
+                })
+                .catch(err => {
+                    console.error('Erro ao buscar clientes:', err);
+                    resBuscaCli.style.display = 'none';
                 });
         });
     }
 
-    document.getElementById('limpar-cliente').onclick = () => {
-        inputCliId.value = '';
-        cliSelArea.style.display = 'none';
-        document.getElementById('campo-busca-cliente').style.display = 'flex';
-        inputBuscaCli.value = '';
-        inputBuscaCli.focus();
-    };
+    if (btnTrocarCliente) {
+        btnTrocarCliente.onclick = (e) => {
+            e.preventDefault();
+            inputCliId.value = '';
+            inicializarEstadoCliente();
+            setTimeout(() => {
+                if (inputBuscaCli) inputBuscaCli.focus();
+            }, 100);
+        };
+    }
 
-    // 2. BUSCA DE PEÇAS NO MODAL
+    // ================= 2. BUSCA DE PEÇAS (MODAL) =================
     const inputPecaModal = document.getElementById('inputBuscaModal');
     const btnBuscaPeca = document.getElementById('btnFazerBusca');
     const listaPecas = document.getElementById('listaResultadosPecas');
+    const modalEl = document.getElementById('modalBuscaPeca');
+    
+    let modalInstance = null;
+    if (modalEl) {
+        modalInstance = new bootstrap.Modal(modalEl);
+        
+        modalEl.addEventListener('shown.bs.modal', () => {
+            if (inputPecaModal) inputPecaModal.focus();
+        });
+    }
 
     const acaoBuscaPeca = () => {
-        const q = inputPecaModal.value;
-        if(q.length < 2) return;
-        listaPecas.innerHTML = '<tr><td colspan="5" class="text-center">Pesquisando...</td></tr>';
+        const q = inputPecaModal.value.trim();
+        if(q.length < 2) {
+            alert('Digite pelo menos 2 caracteres para buscar');
+            return;
+        }
         
-        fetch(`/ordem-servico/api/buscar-pecas-json/?q=${encodeURIComponent(q)}`)
+        listaPecas.innerHTML = '<tr><td colspan="6" class="text-center">Pesquisando... <div class="spinner-border spinner-border-sm"></div></td></tr>';
+        
+        fetch(`${URL_BUSCA_PECA}?q=${encodeURIComponent(q)}`)
             .then(r => r.json())
             .then(data => {
+                console.log('Peças encontradas:', data);
                 listaPecas.innerHTML = '';
-                if(data.length === 0) {
-                    listaPecas.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Nenhum item encontrado.</td></tr>';
+                
+                if(!data || data.length === 0) {
+                    listaPecas.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Nenhum item encontrado.</td></tr>';
                     return;
                 }
+                
                 data.forEach(p => {
-                    listaPecas.innerHTML += `
-                        <tr>
-                            <td><small class="badge bg-light text-dark">${p.codigo}</small></td>
-                            <td>${p.nome}</td>
-                            <td>${p.estoque} un</td>
-                            <td class="fw-bold">R$ ${p.preco}</td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-success" 
-                                    onclick="vincularPeca('${p.id}', '${p.preco}')">Inserir</button>
-                            </td>
-                        </tr>`;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><small class="badge bg-light text-dark border">${p.codigo}</small></td>
+                        <td>${p.nome}</td>
+                        <td>${p.estoque} un</td>
+                        <td class="fw-bold">R$ ${p.preco}</td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm qtd-peca-modal" value="1" min="1" data-peca-id="${p.id}">
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-success w-100 btn-inserir-peca" 
+                                data-peca-id="${p.id}" 
+                                data-peca-nome="${p.nome}" 
+                                data-peca-preco="${p.preco}">
+                                <i class="bi bi-plus-lg"></i> Inserir
+                            </button>
+                        </td>
+                    `;
+                    listaPecas.appendChild(tr);
                 });
+                
+                // Adicionar eventos aos botões de inserir
+                document.querySelectorAll('.btn-inserir-peca').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        console.log('Botão inserir clicado');
+                        
+                        const pecaId = this.dataset.pecaId;
+                        const pecaNome = this.dataset.pecaNome;
+                        const pecaPreco = this.dataset.pecaPreco;
+                        const qtdInput = document.querySelector(`.qtd-peca-modal[data-peca-id="${pecaId}"]`);
+                        const qtd = qtdInput ? qtdInput.value : 1;
+                        
+                        console.log('Dados da peça:', {pecaId, pecaNome, pecaPreco, qtd});
+                        adicionarItemAoFormset(pecaId, pecaNome, pecaPreco, qtd);
+                    });
+                });
+            })
+            .catch(err => {
+                console.error('Erro na busca:', err);
+                listaPecas.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro na busca.</td></tr>';
             });
     };
 
-    btnBuscaPeca.onclick = acaoBuscaPeca;
-    inputPecaModal.onkeyup = (e) => { if(e.key === 'Enter') acaoBuscaPeca(); };
-
-    window.vincularPeca = (id, preco) => {
-        const rows = document.querySelectorAll('.peca-form');
-        let preenchido = false;
-        
-        for (let row of rows) {
-            let select = row.querySelector('select[name$="-peca"]');
-            if (select && !select.value) {
-                select.value = id;
-                row.querySelector('input[name$="-valor_unitario"]').value = preco.replace('.',',');
-                row.querySelector('input[name$="-quantidade"]').value = 1;
-                preenchido = true; break;
+    if (btnBuscaPeca) {
+        btnBuscaPeca.onclick = (e) => {
+            e.preventDefault();
+            acaoBuscaPeca();
+        };
+    }
+    
+    if (inputPecaModal) {
+        inputPecaModal.onkeyup = (e) => { 
+            if(e.key === 'Enter') {
+                e.preventDefault();
+                acaoBuscaPeca();
             }
-        }
+        };
+    }
 
-        if (!preenchido) {
-            document.getElementById('add-peca').click();
-            setTimeout(() => vincularPeca(id, preco), 150);
+    // ================= 3. ADICIONAR ITEM (CORRIGIDO) =================
+    function adicionarItemAoFormset(id, nome, preco, qtd) {
+        console.log('=== INICIANDO ADIÇÃO DE PEÇA ===');
+        console.log('Parâmetros:', {id, nome, preco, qtd});
+        
+        if (!totalFormsInput) {
+            console.error('ERRO CRÍTICO: totalFormsInput não encontrado');
+            alert('Erro: Formulário não inicializado corretamente');
             return;
         }
 
-        bootstrap.Modal.getInstance(document.getElementById('modalBuscaPeca')).hide();
-        atualizarTotalGeral();
-    };
+        if (!formsetBody) {
+            console.error('ERRO CRÍTICO: formsetBody não encontrado');
+            alert('Erro: Tabela de peças não encontrada');
+            return;
+        }
 
-    // 3. CÁLCULOS FINANCEIROS
+        const count = parseInt(totalFormsInput.value);
+        console.log('Índice atual do formset:', count);
+        
+        const templateEl = document.getElementById('empty-form-template');
+        if (!templateEl) {
+            console.error('ERRO: Template não encontrado');
+            alert('Erro: Template de linha não encontrado');
+            return;
+        }
+        
+        // Criar nova linha a partir do template
+        const template = templateEl.innerHTML;
+        const newRowHtml = template.replace(/__prefix__/g, count);
+        
+        console.log('HTML da nova linha gerado');
+        
+        // Criar elemento temporário para parsear o HTML
+        const tempContainer = document.createElement('tbody');
+        tempContainer.innerHTML = newRowHtml.trim();
+        const newRow = tempContainer.querySelector('tr');
+        
+        if (!newRow) {
+            console.error('ERRO: Não foi possível criar a linha TR');
+            console.log('HTML gerado:', newRowHtml);
+            alert('Erro ao criar nova linha na tabela');
+            return;
+        }
+        
+        console.log('Linha TR criada com sucesso');
+        
+        // Preencher o select oculto
+        const selectName = `${FORM_PREFIX}-${count}-peca`;
+        const select = newRow.querySelector(`select[name="${selectName}"]`);
+        
+        if (select) {
+            console.log('Select encontrado:', selectName);
+            select.innerHTML = '';
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = nome;
+            option.selected = true;
+            select.appendChild(option);
+            console.log('Option adicionada ao select');
+        } else {
+            console.error('ERRO: Select não encontrado:', selectName);
+        }
+        
+        // Preencher display do nome
+        const displayInput = newRow.querySelector('.peca-nome-display');
+        if (displayInput) {
+            displayInput.value = nome;
+            console.log('Nome da peça preenchido');
+        }
+        
+        // Preencher quantidade
+        const qtdName = `${FORM_PREFIX}-${count}-quantidade`;
+        const qtdInput = newRow.querySelector(`input[name="${qtdName}"]`);
+        if (qtdInput) {
+            qtdInput.value = qtd;
+            console.log('Quantidade preenchida:', qtd);
+        }
+        
+        // Preencher preço (converter ponto para vírgula se necessário)
+        const precoName = `${FORM_PREFIX}-${count}-preco_unitario`;
+        const precoInput = newRow.querySelector(`input[name="${precoName}"]`);
+        if (precoInput) {
+            // O preço vem como "183.00", mantemos com ponto
+            precoInput.value = preco;
+            console.log('Preço preenchido:', preco);
+        }
+        
+        // Adicionar a linha ao tbody
+        formsetBody.appendChild(newRow);
+        console.log('Linha adicionada ao DOM');
+        
+        // Incrementar contador de forms
+        totalFormsInput.value = count + 1;
+        console.log('Contador incrementado para:', count + 1);
+        
+        // Ocultar mensagem "sem peças"
+        if (msgSemPecas) {
+            msgSemPecas.style.display = 'none';
+        }
+        
+        // Atualizar totais
+        atualizarTotalGeral();
+        
+        // Fechar modal
+        if (modalInstance) {
+            modalInstance.hide();
+            console.log('Modal fechado');
+        }
+        
+        // Limpar busca
+        if (inputPecaModal) inputPecaModal.value = '';
+        if (listaPecas) {
+            listaPecas.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Digite algo e clique em Buscar</td></tr>';
+        }
+        
+        console.log('=== PEÇA ADICIONADA COM SUCESSO ===');
+    }
+    
+    // Tornar função global
+    window.adicionarItemAoFormset = adicionarItemAoFormset;
+
+    // ================= 4. REMOVER ITEM =================
+    if (formsetBody) {
+        formsetBody.addEventListener('click', function(e) {
+            const btnRemove = e.target.closest('.btn-remove-row');
+            if (btnRemove) {
+                e.preventDefault();
+                const row = btnRemove.closest('tr');
+                
+                if (!row) return;
+                
+                const idInput = row.querySelector('input[name$="-id"]');
+                const deleteInput = row.querySelector('input[name$="-DELETE"]');
+                
+                if (idInput && idInput.value) {
+                    if (deleteInput) deleteInput.checked = true;
+                    row.style.display = 'none';
+                } else {
+                    row.remove();
+                }
+                
+                atualizarTotalGeral();
+                verificarVazio();
+            }
+        });
+    }
+
+    function verificarVazio() {
+        if (!formsetBody || !msgSemPecas) return;
+        
+        let visiveis = 0;
+        formsetBody.querySelectorAll('tr').forEach(tr => {
+            if (tr.style.display !== 'none') visiveis++;
+        });
+        msgSemPecas.style.display = (visiveis === 0) ? 'block' : 'none';
+    }
+
+    // ================= 5. CÁLCULOS =================
     function atualizarTotalGeral() {
         let totalPecas = 0;
         
-        // Calcula cada linha da tabela
-        document.querySelectorAll('.peca-form').forEach(row => {
-            const isDelete = row.querySelector('input[name$="-DELETE"]')?.checked;
-            if (!isDelete) {
-                const qtd = parseFloat(row.querySelector('input[name$="-quantidade"]').value) || 0;
-                const vlr = parseFloat(row.querySelector('input[name$="-valor_unitario"]').value.replace(',','.')) || 0;
-                const sub = qtd * vlr;
-                row.querySelector('.peca-subtotal').innerText = `R$ ${sub.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-                totalPecas += sub;
-            }
-        });
+        if (formsetBody) {
+            formsetBody.querySelectorAll('tr').forEach(row => {
+                if (row.style.display === 'none') return;
+                
+                const del = row.querySelector('input[name$="-DELETE"]');
+                if (del && del.checked) return;
 
-        // Atualiza campos de resumo
-        const inputValorPecas = document.querySelector('input[name="valor_pecas"]');
-        if(inputValorPecas) inputValorPecas.value = totalPecas.toFixed(2).replace('.',',');
+                const qtdInput = row.querySelector('input[name$="-quantidade"]');
+                const vlrInput = row.querySelector('input[name$="-preco_unitario"]');
+                
+                if (qtdInput && vlrInput) {
+                    const qtd = parseFloat(qtdInput.value) || 0;
+                    // Aceitar tanto ponto quanto vírgula
+                    const vlrStr = vlrInput.value.toString().replace(',', '.');
+                    const vlr = parseFloat(vlrStr) || 0;
+                    const sub = qtd * vlr;
+                    
+                    const subtotalSpan = row.querySelector('.peca-subtotal');
+                    if (subtotalSpan) {
+                        subtotalSpan.innerText = `R$ ${sub.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+                    }
+                    totalPecas += sub;
+                }
+            });
+        }
 
-        const maoObra = parseFloat(document.querySelector('input[name="valor_mao_obra"]').value.replace(',','.')) || 0;
-        const desconto = parseFloat(document.querySelector('input[name="desconto"]').value.replace(',','.')) || 0;
+        const visualPecas = document.getElementById('visual_total_pecas');
+        if (visualPecas) visualPecas.value = totalPecas.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+
+        const moEl = document.querySelector('input[name="valor_mao_de_obra"]');
+        const descEl = document.querySelector('input[name="desconto"]');
         
-        const totalFinal = (maoObra + totalPecas) - desconto;
-        document.getElementById('valor-total-exibicao').innerText = `R$ ${totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        const moStr = moEl ? moEl.value.toString().replace(',', '.') : '0';
+        const descStr = descEl ? descEl.value.toString().replace(',', '.') : '0';
+        
+        const mo = parseFloat(moStr) || 0;
+        const desc = parseFloat(descStr) || 0;
+        
+        const totalFinal = (mo + totalPecas) - desc;
+        const totalDisplay = document.getElementById('valor-total-exibicao');
+        if (totalDisplay) {
+            totalDisplay.innerText = `R$ ${totalFinal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        }
     }
 
-    // Eventos para recalcular
-    document.getElementById('osForm').addEventListener('input', (e) => {
-        if (e.target.matches('input')) atualizarTotalGeral();
-    });
-
-    // 4. LÓGICA DO FORMSET (ADICIONAR LINHA)
-    let totalForms = document.getElementById('id_pecas_utilizadas-TOTAL_FORMS');
-    document.getElementById('add-peca').onclick = () => {
-        let count = parseInt(totalForms.value);
-        let firstRow = document.querySelector('.peca-form');
-        let newRow = firstRow.cloneNode(true);
-        
-        newRow.innerHTML = newRow.innerHTML.replace(/pecas_utilizadas-(\d+)-/g, `pecas_utilizadas-${count}-`);
-        newRow.querySelectorAll('input, select').forEach(i => {
-            if(i.type === 'checkbox') i.checked = false;
-            else i.value = '';
+    const osForm = document.getElementById('osForm');
+    if (osForm) {
+        osForm.addEventListener('input', (e) => {
+            if (e.target.matches('input')) {
+                atualizarTotalGeral();
+            }
         });
-        newRow.querySelector('.peca-subtotal').innerText = 'R$ 0,00';
-        
-        document.getElementById('pecas-formset').appendChild(newRow);
-        totalForms.value = count + 1;
-    };
+    }
 
-    // Inicialização
+    // ================= INICIALIZAÇÃO =================
+    inicializarEstadoCliente();
+    verificarVazio();
     atualizarTotalGeral();
+    
+    console.log('✅ Sistema de OS inicializado com sucesso');
 });
+
 </script>
 {% endblock %}

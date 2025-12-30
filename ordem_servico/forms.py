@@ -1,136 +1,53 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import OrdemServico, PecaUtilizada
+from .models import OrdemServico, PecaUtilizadaOS # CORREÇÃO
 from clientes.models import Cliente
-from estoque.models import Peca
-
-
-class ClienteSelectWidget(forms.Select):
-    """Widget customizado para buscar clientes por nome ou CPF"""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.attrs.update({
-            'class': 'form-select cliente-select',
-            'data-placeholder': 'Buscar cliente por nome ou CPF...'
-        })
-
 
 class OrdemServicoForm(forms.ModelForm):
     class Meta:
         model = OrdemServico
         fields = [
             'cliente', 'tipo_equipamento', 'marca', 'modelo', 'numero_serie',
-            'defeito_relatado', 'defeito_encontrado', 'status', 'prazo_estimado',
-            'valor_mao_obra', 'valor_pecas', 'desconto', 'dias_garantia',
+            'defeito_cliente', 'diagnostico_tecnico', 'status', 'prioridade', # CORREÇÃO: defeito_cliente
+            'data_previsao', 'garantia_dias', 'valor_mao_de_obra', 'desconto',
             'tecnico', 'observacoes_internas', 'observacoes_cliente'
         ]
         widgets = {
-            'cliente': ClienteSelectWidget(attrs={
-                'class': 'form-select',
-                'required': True
-            }),
-            'tipo_equipamento': forms.Select(attrs={
-                'class': 'form-select',
-                'required': True
-            }),
-            'marca': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Marca do equipamento',
-                'required': True
-            }),
-            'modelo': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Modelo do equipamento',
-                'required': True
-            }),
-            'numero_serie': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Número de série (opcional)'
-            }),
-            'defeito_relatado': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Descreva o problema relatado pelo cliente',
-                'required': True
-            }),
-            'defeito_encontrado': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Diagnóstico técnico do problema'
-            }),
-            'status': forms.Select(attrs={
-                'class': 'form-select'
-            }),
-            'prazo_estimado': forms.DateInput(attrs={
-                'class': 'form-control',
-                'type': 'date'
-            }),
-            'valor_mao_obra': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'value': '0'
-            }),
-            'valor_pecas': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'value': '0',
-                'readonly': True
-            }),
-            'desconto': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0',
-                'value': '0'
-            }),
-            'dias_garantia': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'min': '0',
-                'value': '90'
-            }),
-            'tecnico': forms.Select(attrs={
-                'class': 'form-select'
-            }),
-            'observacoes_internas': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Observações internas (não visível ao cliente)'
-            }),
-            'observacoes_cliente': forms.Textarea(attrs={
-                'class': 'form-control',
-                'rows': 3,
-                'placeholder': 'Observações para o cliente'
-            }),
+            'cliente': forms.Select(attrs={'class': 'form-select', 'required': True}),
+            'tipo_equipamento': forms.TextInput(attrs={'class': 'form-control'}), # Ajustado para CharField
+            'marca': forms.TextInput(attrs={'class': 'form-control'}),
+            'modelo': forms.TextInput(attrs={'class': 'form-control'}),
+            'numero_serie': forms.TextInput(attrs={'class': 'form-control'}),
+            'defeito_cliente': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'diagnostico_tecnico': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'prioridade': forms.Select(attrs={'class': 'form-select'}),
+            'data_previsao': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'garantia_dias': forms.NumberInput(attrs={'class': 'form-control'}),
+            'valor_mao_de_obra': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'desconto': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'tecnico': forms.Select(attrs={'class': 'form-select'}),
+            'observacoes_internas': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observacoes_cliente': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-
 
 class PecaUtilizadaForm(forms.ModelForm):
     class Meta:
-        model = PecaUtilizada
-        fields = ['peca', 'quantidade', 'valor_unitario']
+        model = PecaUtilizadaOS # CORREÇÃO
+        fields = ['peca', 'quantidade', 'preco_unitario'] # CORREÇÃO: preco_unitario
         widgets = {
-            'peca': forms.Select(attrs={
-                'class': 'form-select'
-            }),
-            'quantidade': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'min': '1',
-                'value': '1'
-            }),
-            'valor_unitario': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'step': '0.01',
-                'min': '0'
-            }),
+            'peca': forms.Select(attrs={'class': 'form-select'}),
+            'quantidade': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+            'preco_unitario': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
         }
 
-
-# Formset para gerenciar múltiplas peças utilizadas
+# CORREÇÃO: Formset usando o modelo correto e extra=0
 PecaUtilizadaFormSet = inlineformset_factory(
     OrdemServico,
-    PecaUtilizada,
+    PecaUtilizadaOS, # CORREÇÃO
     form=PecaUtilizadaForm,
-    extra=1,
+    extra=0,
+    min_num=0,
+    validate_min=False,
     can_delete=True
 )

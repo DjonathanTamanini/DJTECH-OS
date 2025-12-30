@@ -6,7 +6,6 @@
 {% block page_subtitle %}Gerenciar ordens de serviço{% endblock %}
 
 {% block content %}
-<!-- Estatísticas Rápidas -->
 <div class="row mb-3">
     <div class="col-md-3">
         <div class="card bg-primary text-white">
@@ -40,7 +39,6 @@
     </div>
 </div>
 
-<!-- Filtros -->
 <div class="row mb-3">
     <div class="col-md-12">
         <form method="get" class="row g-2">
@@ -48,7 +46,7 @@
                 <input type="text" 
                        name="busca" 
                        class="form-control" 
-                       placeholder="Buscar por número, cliente, marca ou modelo..."
+                       placeholder="Buscar por número (ID), cliente, marca ou modelo..."
                        value="{{ busca }}">
             </div>
             <div class="col-md-4">
@@ -70,7 +68,6 @@
     </div>
 </div>
 
-<!-- Tabela de OS -->
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -83,7 +80,7 @@
                         <th>Defeito</th>
                         <th>Status</th>
                         <th>Data Entrada</th>
-                        <th>Prazo</th>
+                        <th>Previsão</th>
                         <th>Valor</th>
                         <th width="120">Ações</th>
                     </tr>
@@ -92,39 +89,41 @@
                     {% for os in ordens %}
                     <tr>
                         <td>
-                            <strong>{{ os.numero_os }}</strong>
+                            <strong>#{{ os.id }}</strong>
                         </td>
                         <td>{{ os.cliente.nome|truncatewords:3 }}</td>
                         <td>
-                            {{ os.get_tipo_equipamento_display }}<br>
+                            {{ os.tipo_equipamento }}<br>
                             <small class="text-muted">{{ os.marca }} {{ os.modelo }}</small>
                         </td>
-                        <td>{{ os.defeito_relatado|truncatewords:5 }}</td>
+                        <td>
+                            {{ os.defeito_cliente|truncatewords:5 }}
+                        </td>
                         <td>
                             {% if os.status == 'recepcao' %}
                                 <span class="badge bg-secondary">Recepção</span>
-                            {% elif os.status == 'avaliacao' %}
-                                <span class="badge bg-info">Em Avaliação</span>
-                            {% elif os.status == 'aguardando_aprovacao' %}
+                            {% elif os.status == 'analise' %}
+                                <span class="badge bg-info text-dark">Em Análise</span>
+                            {% elif os.status == 'aprovacao' %}
                                 <span class="badge bg-warning text-dark">Aguardando Aprovação</span>
-                            {% elif os.status == 'aprovado' %}
-                                <span class="badge bg-primary">Aprovado</span>
-                            {% elif os.status == 'em_reparo' %}
-                                <span class="badge" style="background-color: #fd7e14;">Em Reparo</span>
-                            {% elif os.status == 'concluido' %}
-                                <span class="badge bg-success">Concluído</span>
+                            {% elif os.status == 'reparo' %}
+                                <span class="badge bg-primary">Em Reparo</span>
+                            {% elif os.status == 'pronto' %}
+                                <span class="badge bg-success">Pronto</span>
                             {% elif os.status == 'entregue' %}
-                                <span class="badge" style="background-color: #20c997;">Entregue</span>
+                                <span class="badge bg-dark">Entregue</span>
                             {% elif os.status == 'cancelado' %}
                                 <span class="badge bg-danger">Cancelado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ os.get_status_display }}</span>
                             {% endif %}
                         </td>
                         <td>{{ os.data_entrada|date:"d/m/Y" }}</td>
                         <td>
-                            {% if os.prazo_estimado %}
-                                {{ os.prazo_estimado|date:"d/m/Y" }}
+                            {% if os.data_previsao %}
+                                {{ os.data_previsao|date:"d/m/Y" }}
                                 {% now "Y-m-d" as hoje %}
-                                {% if os.prazo_estimado|date:"Y-m-d" < hoje and os.status not in 'concluido,entregue,cancelado' %}
+                                {% if os.data_previsao|date:"Y-m-d" < hoje and os.status != 'entregue' and os.status != 'cancelado' and os.status != 'pronto' %}
                                     <br><span class="badge bg-danger">Atrasado</span>
                                 {% endif %}
                             {% else %}
@@ -133,22 +132,24 @@
                         </td>
                         <td>R$ {{ os.valor_total|floatformat:2 }}</td>
                         <td>
-                            <a href="{% url 'ordem_servico_detalhe' os.pk %}" 
-                               class="btn btn-sm btn-info btn-action" 
-                               title="Visualizar">
-                                <i class="bi bi-eye"></i>
-                            </a>
-                            <a href="{% url 'ordem_servico_editar' os.pk %}" 
-                               class="btn btn-sm btn-primary btn-action" 
-                               title="Editar">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'ordem_servico_imprimir' os.pk %}" 
-                               class="btn btn-sm btn-secondary btn-action" 
-                               title="Imprimir"
-                               target="_blank">
-                                <i class="bi bi-printer"></i>
-                            </a>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'ordem_servico_detalhe' os.pk %}" 
+                                   class="btn btn-info" 
+                                   title="Visualizar">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'ordem_servico_editar' os.pk %}" 
+                                   class="btn btn-primary" 
+                                   title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'ordem_servico_imprimir' os.pk %}" 
+                                   class="btn btn-secondary" 
+                                   title="Imprimir"
+                                   target="_blank">
+                                    <i class="bi bi-printer"></i>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     {% empty %}

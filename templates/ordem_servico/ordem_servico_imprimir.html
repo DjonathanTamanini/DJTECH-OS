@@ -1,391 +1,296 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ ordem.numero_os }} - Impressão</title>
-    
+    <title>Imprimir OS #{{ ordem.pk }}</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        /* ==========================================
+           ESTILOS GERAIS (TELA E PAPEL)
+           ========================================== */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Helvetica', 'Arial', sans-serif;
             font-size: 12px;
-            padding: 20px;
+            line-height: 1.4;
             color: #333;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9; /* Fundo cinza só na tela */
         }
-        
+
+        .container {
+            max-width: 210mm; /* Largura A4 */
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px 40px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            min-height: 297mm; /* Altura A4 */
+        }
+
+        /* Cabeçalho */
         .header {
-            text-align: center;
-            border-bottom: 3px solid #2c3e50;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .header h1 {
-            color: #2c3e50;
-            font-size: 28px;
-            margin-bottom: 5px;
-        }
-        
-        .header p {
-            color: #7f8c8d;
-            font-size: 14px;
-        }
-        
-        .os-info {
-            background-color: #ecf0f1;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        
-        .os-info h2 {
-            color: #2c3e50;
-            font-size: 18px;
-            margin-bottom: 10px;
-        }
-        
-        .os-info .details {
             display: flex;
             justify-content: space-between;
-        }
-        
-        .os-info .details div {
-            flex: 1;
-        }
-        
-        .section {
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
             margin-bottom: 20px;
-            page-break-inside: avoid;
         }
-        
-        .section h3 {
-            background-color: #34495e;
-            color: white;
-            padding: 8px 12px;
-            font-size: 14px;
+        .header-logo h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+        .header-info { text-align: right; }
+        .header-info h2 { margin: 0; font-size: 18px; color: #555; }
+
+        /* Títulos de Seção */
+        .section-title {
+            background-color: #eee;
+            color: #000;
+            font-weight: bold;
+            padding: 5px 10px;
+            margin-top: 15px;
             margin-bottom: 10px;
-            border-radius: 3px;
+            border-left: 5px solid #333;
+            text-transform: uppercase;
+            font-size: 11px;
         }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
+
+        /* Tabelas de Dados */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
+        .info-item { margin-bottom: 5px; }
+        .info-label { font-weight: bold; color: #555; display: block; font-size: 10px; }
+        .info-value { font-size: 12px; }
+
+        /* Tabela de Peças */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        th { background-color: #f4f4f4; text-align: left; padding: 5px; font-size: 11px; border-bottom: 1px solid #ddd; }
+        td { padding: 5px; border-bottom: 1px solid #eee; font-size: 11px; }
+        .text-right { text-align: right; }
         
-        table.info-table td {
-            padding: 8px;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        
-        table.info-table td:first-child {
-            font-weight: bold;
-            width: 180px;
-            color: #7f8c8d;
-        }
-        
-        table.pecas-table {
-            border: 1px solid #bdc3c7;
-        }
-        
-        table.pecas-table th {
-            background-color: #34495e;
-            color: white;
+        /* Caixas de Texto (Diagnóstico/Defeito) */
+        .text-box {
+            border: 1px solid #ddd;
             padding: 10px;
-            text-align: left;
-            font-size: 12px;
+            border-radius: 4px;
+            background-color: #fafafa;
+            margin-bottom: 10px;
         }
-        
-        table.pecas-table td {
-            padding: 8px;
-            border-bottom: 1px solid #ecf0f1;
+
+        /* Resumo Financeiro */
+        .financial-summary {
+            float: right;
+            width: 250px;
+            margin-top: 10px;
         }
-        
-        table.pecas-table tfoot td {
-            font-weight: bold;
-            background-color: #ecf0f1;
-            border-top: 2px solid #34495e;
-        }
-        
-        .valores-box {
-            background-color: #e8f5e9;
-            padding: 15px;
-            border-radius: 5px;
-            border-left: 5px solid #27ae60;
-        }
-        
-        .valores-box table td {
-            padding: 5px 0;
-        }
-        
-        .valores-box .total {
-            font-size: 18px;
-            color: #27ae60;
-            font-weight: bold;
-        }
-        
-        .defeito-box {
-            background-color: #fff9e6;
-            border-left: 5px solid #f39c12;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 3px;
-        }
-        
-        .defeito-box h4 {
-            color: #f39c12;
-            margin-bottom: 8px;
-        }
-        
-        .assinaturas {
+        .financial-row { display: flex; justify-content: space-between; padding: 3px 0; }
+        .total-row { font-weight: bold; border-top: 2px solid #000; margin-top: 5px; padding-top: 5px; font-size: 14px; }
+
+        /* Assinaturas */
+        .signatures {
             margin-top: 50px;
-            page-break-inside: avoid;
+            display: flex;
+            justify-content: space-between;
+            page-break-inside: avoid; /* Não quebrar assinatura no meio da página */
         }
-        
-        .assinaturas .box {
-            display: inline-block;
+        .sig-block {
             width: 45%;
             text-align: center;
-            margin: 20px 2.5%;
-        }
-        
-        .assinaturas .linha {
-            border-top: 1px solid #333;
-            margin-top: 60px;
+            border-top: 1px solid #000;
             padding-top: 5px;
         }
-        
-        .footer {
+
+        /* Termos */
+        .terms {
             margin-top: 30px;
-            padding-top: 15px;
-            border-top: 2px solid #ecf0f1;
-            text-align: center;
-            color: #7f8c8d;
-            font-size: 10px;
+            font-size: 9px;
+            color: #777;
+            text-align: justify;
+            border-top: 1px dotted #ccc;
+            padding-top: 10px;
         }
-        
+
+        /* Botões de Tela */
+        .actions-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 10px 20px;
+            background-color: #333;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-close { background-color: #ccc; color: #333; margin-left: 10px; }
+
+        /* ==========================================
+           CONFIGURAÇÕES DE IMPRESSÃO
+           ========================================== */
         @media print {
-            body {
-                padding: 0;
-            }
-            
-            .no-print {
-                display: none;
-            }
+            body { background-color: #fff; padding: 0; margin: 0; }
+            .container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; padding: 0; }
+            .actions-bar { display: none; } /* Esconde botões */
+            .section-title { background-color: #f4f4f4 !important; -webkit-print-color-adjust: exact; } /* Força cor de fundo */
         }
     </style>
 </head>
 <body>
-    <!-- Botão para imprimir (oculto na impressão) -->
-    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
-        <button onclick="window.print()" style="padding: 10px 30px; font-size: 16px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
-            🖨️ Imprimir
-        </button>
-        <button onclick="window.close()" style="padding: 10px 30px; font-size: 16px; background-color: #95a5a6; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
-            ✖️ Fechar
-        </button>
+
+    <div class="actions-bar">
+        <button onclick="window.print()" class="btn">🖨️ Imprimir OS</button>
+        <button onclick="window.close()" class="btn btn-close">Fechar Janela</button>
     </div>
-    
-    <!-- Cabeçalho -->
-    <div class="header">
-        <h1>🔧 DJTECH-OS</h1>
-        <p>Assistência Técnica Especializada</p>
-    </div>
-    
-    <!-- Informações da OS -->
-    <div class="os-info">
-        <h2>ORDEM DE SERVIÇO: {{ ordem.numero_os }}</h2>
-        <div class="details">
-            <div>
-                <strong>Data de Entrada:</strong> {{ ordem.data_entrada|date:"d/m/Y H:i" }}
-            </div>
-            <div>
-                <strong>Status:</strong> {{ ordem.get_status_display }}
-            </div>
-            <div>
-                <strong>Prazo:</strong> 
-                {% if ordem.prazo_estimado %}
-                    {{ ordem.prazo_estimado|date:"d/m/Y" }}
-                {% else %}
-                    A definir
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    
-    <!-- Cliente -->
-    <div class="section">
-        <h3>👤 DADOS DO CLIENTE</h3>
-        <table class="info-table">
-            <tr>
-                <td>Nome:</td>
-                <td>{{ ordem.cliente.nome }}</td>
-            </tr>
-            <tr>
-                <td>CPF/CNPJ:</td>
-                <td>{{ ordem.cliente.cpf_cnpj }}</td>
-            </tr>
-            <tr>
-                <td>Telefone:</td>
-                <td>{{ ordem.cliente.telefone_principal }}</td>
-            </tr>
-            <tr>
-                <td>Email:</td>
-                <td>{{ ordem.cliente.email|default:"Não informado" }}</td>
-            </tr>
-        </table>
-    </div>
-    
-    <!-- Equipamento -->
-    <div class="section">
-        <h3>💻 EQUIPAMENTO</h3>
-        <table class="info-table">
-            <tr>
-                <td>Tipo:</td>
-                <td>{{ ordem.get_tipo_equipamento_display }}</td>
-            </tr>
-            <tr>
-                <td>Marca:</td>
-                <td>{{ ordem.marca }}</td>
-            </tr>
-            <tr>
-                <td>Modelo:</td>
-                <td>{{ ordem.modelo }}</td>
-            </tr>
-            <tr>
-                <td>Número de Série:</td>
-                <td>{{ ordem.numero_serie|default:"Não informado" }}</td>
-            </tr>
-        </table>
-    </div>
-    
-    <!-- Defeitos -->
-    <div class="section">
-        <h3>⚠️ DEFEITOS</h3>
-        <div class="defeito-box">
-            <h4>Defeito Relatado pelo Cliente:</h4>
-            <p>{{ ordem.defeito_relatado|linebreaks }}</p>
-        </div>
+
+    <div class="container">
         
-        {% if ordem.defeito_encontrado %}
-        <div class="defeito-box" style="background-color: #e3f2fd; border-left-color: #2196f3;">
-            <h4 style="color: #2196f3;">Diagnóstico Técnico:</h4>
-            <p>{{ ordem.defeito_encontrado|linebreaks }}</p>
+        <div class="header">
+            <div class="header-logo">
+                <h1>DJ TECH</h1>
+                <div style="font-size: 10px; color: #666;">Assistência Técnica Especializada</div>
+            </div>
+            <div class="header-info">
+                <h2>Ordem de Serviço #{{ ordem.pk }}</h2>
+                <div class="info-value">Data: {{ ordem.data_entrada|date:"d/m/Y" }}</div>
+                <div class="info-value">Status: <strong>{{ ordem.get_status_display }}</strong></div>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div>
+                <div class="section-title">Dados do Cliente</div>
+                <div class="info-item">
+                    <span class="info-label">Nome:</span>
+                    <span class="info-value">{{ ordem.cliente.nome }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Documento (CPF/CNPJ):</span>
+                    <span class="info-value">{{ ordem.cliente.cpf_cnpj|default:"-" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Telefone / WhatsApp:</span>
+                    <span class="info-value">{{ ordem.cliente.telefone_principal }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Endereço:</span>
+                    <span class="info-value">{{ ordem.cliente.endereco|default:"-" }}</span>
+                </div>
+            </div>
+            
+            <div>
+                <div class="section-title">Equipamento</div>
+                <div class="info-item">
+                    <span class="info-label">Dispositivo:</span>
+                    <span class="info-value">{{ ordem.tipo_equipamento }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Marca / Modelo:</span>
+                    <span class="info-value">{{ ordem.marca }} / {{ ordem.modelo }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Nº de Série:</span>
+                    <span class="info-value">{{ ordem.numero_serie|default:"Não informado" }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Técnico Responsável:</span>
+                    <span class="info-value">{{ ordem.tecnico.get_full_name|default:"Não atribuído" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section-title">Detalhes do Serviço</div>
+        
+        <span class="info-label">Defeito Relatado pelo Cliente:</span>
+        <div class="text-box">
+            {{ ordem.defeito_cliente|linebreaksbr }}
+        </div>
+
+        {% if ordem.diagnostico_tecnico %}
+        <span class="info-label">Diagnóstico / Laudo Técnico:</span>
+        <div class="text-box">
+            {{ ordem.diagnostico_tecnico|linebreaksbr }}
         </div>
         {% endif %}
-    </div>
-    
-    <!-- Peças Utilizadas -->
-    {% if pecas_utilizadas %}
-    <div class="section">
-        <h3>🔧 PEÇAS UTILIZADAS</h3>
-        <table class="pecas-table">
+
+        {% if ordem.pecas.exists %}
+        <div class="section-title">Peças e Materiais Aplicados</div>
+        <table>
             <thead>
                 <tr>
-                    <th>Código</th>
-                    <th>Descrição</th>
-                    <th style="text-align: center;">Qtd</th>
-                    <th style="text-align: right;">Valor Unit.</th>
-                    <th style="text-align: right;">Total</th>
+                    <th>Descrição do Item</th>
+                    <th class="text-right">Qtd</th>
+                    <th class="text-right">Valor Unit.</th>
+                    <th class="text-right">Total</th>
                 </tr>
             </thead>
             <tbody>
-                {% for peca_util in pecas_utilizadas %}
+                {% for item in ordem.pecas.all %}
                 <tr>
-                    <td>{{ peca_util.peca.codigo_interno }}</td>
-                    <td>{{ peca_util.peca.descricao }}</td>
-                    <td style="text-align: center;">{{ peca_util.quantidade }}</td>
-                    <td style="text-align: right;">R$ {{ peca_util.valor_unitario|floatformat:2 }}</td>
-                    <td style="text-align: right;">R$ {{ peca_util.valor_total|floatformat:2 }}</td>
+                    <td>{{ item.peca.nome }}</td>
+                    <td class="text-right">{{ item.quantidade }}</td>
+                    <td class="text-right">R$ {{ item.preco_unitario }}</td>
+                    <td class="text-right">R$ {{ item.valor_total }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="4" style="text-align: right;">TOTAL PEÇAS:</td>
-                    <td style="text-align: right;">R$ {{ ordem.valor_pecas|floatformat:2 }}</td>
-                </tr>
-            </tfoot>
         </table>
-    </div>
-    {% endif %}
-    
-    <!-- Valores -->
-    <div class="section">
-        <h3>💰 VALORES</h3>
-        <div class="valores-box">
-            <table style="width: 100%;">
-                <tr>
-                    <td>Mão de Obra:</td>
-                    <td style="text-align: right;">R$ {{ ordem.valor_mao_obra|floatformat:2 }}</td>
-                </tr>
-                <tr>
-                    <td>Peças:</td>
-                    <td style="text-align: right;">R$ {{ ordem.valor_pecas|floatformat:2 }}</td>
-                </tr>
+        {% endif %}
+
+        <div style="overflow: hidden;"> <div class="financial-summary">
+                <div class="financial-row">
+                    <span>Mão de Obra:</span>
+                    <span>R$ {{ ordem.valor_mao_de_obra|floatformat:2 }}</span>
+                </div>
+                <div class="financial-row">
+                    <span>Total Peças:</span>
+                    <span>R$ {{ ordem.total_pecas|floatformat:2 }}</span>
+                </div>
                 {% if ordem.desconto > 0 %}
-                <tr>
-                    <td>Desconto:</td>
-                    <td style="text-align: right; color: #e74c3c;">- R$ {{ ordem.desconto|floatformat:2 }}</td>
-                </tr>
+                <div class="financial-row" style="color: red;">
+                    <span>Desconto:</span>
+                    <span>- R$ {{ ordem.desconto|floatformat:2 }}</span>
+                </div>
                 {% endif %}
-                <tr>
-                    <td colspan="2"><hr style="border: 1px solid #27ae60; margin: 10px 0;"></td>
-                </tr>
-                <tr>
-                    <td><strong>VALOR TOTAL:</strong></td>
-                    <td style="text-align: right;" class="total">R$ {{ ordem.valor_total|floatformat:2 }}</td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    
-    <!-- Observações -->
-    {% if ordem.observacoes_cliente %}
-    <div class="section">
-        <h3>📝 OBSERVAÇÕES</h3>
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
-            {{ ordem.observacoes_cliente|linebreaks }}
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- Garantia -->
-    <div class="section">
-        <h3>🛡️ GARANTIA</h3>
-        <p style="padding: 15px; background-color: #e8f5e9; border-radius: 5px;">
-            <strong>Este serviço possui garantia de {{ ordem.dias_garantia }} dias</strong> contra defeitos nos serviços executados e peças utilizadas, 
-            contados a partir da data de entrega do equipamento.
-            {% if ordem.data_fim_garantia %}
-                <br><strong>Garantia válida até: {{ ordem.data_fim_garantia|date:"d/m/Y" }}</strong>
-            {% endif %}
-        </p>
-    </div>
-    
-    <!-- Assinaturas -->
-    <div class="assinaturas">
-        <div class="box">
-            <div class="linha">
-                Assinatura do Cliente
+                <div class="financial-row total-row">
+                    <span>TOTAL A PAGAR:</span>
+                    <span>R$ {{ ordem.valor_total|floatformat:2 }}</span>
+                </div>
             </div>
         </div>
-        <div class="box">
-            <div class="linha">
-                Assinatura do Técnico
+
+        {% if ordem.observacoes_cliente %}
+        <div class="section-title">Observações Gerais</div>
+        <div class="text-box" style="font-style: italic;">
+            {{ ordem.observacoes_cliente|linebreaksbr }}
+        </div>
+        {% endif %}
+
+        <div class="terms">
+            <strong>TERMOS DE GARANTIA:</strong>
+            <p>
+                1. A garantia dos serviços prestados é de <strong>{{ ordem.garantia_dias }} dias</strong>, contados a partir da data de retirada do equipamento.<br>
+                2. A garantia cobre apenas os defeitos relacionados ao serviço executado ou peças substituídas.<br>
+                3. A garantia perde a validade em caso de mau uso, queda, contato com líquidos, violação de lacres ou intervenção de terceiros.<br>
+                4. Equipamentos não retirados em até 90 dias após a notificação de "Pronto" poderão ser vendidos para custeio das despesas, conforme legislação vigente.
+            </p>
+        </div>
+
+        <div class="signatures">
+            <div class="sig-block">
+                Assinatura do Técnico / Responsável
+            </div>
+            <div class="sig-block">
+                Assinatura do Cliente<br>
+                <small>{{ ordem.cliente.nome }}</small>
             </div>
         </div>
+
     </div>
-    
-    <!-- Rodapé -->
-    <div class="footer">
-        <p>DJTECH-OS - Sistema de Gestão de Assistência Técnica</p>
-        <p>Documento gerado em {{ ordem.data_entrada|date:"d/m/Y" }} às {{ ordem.data_entrada|date:"H:i" }}</p>
-    </div>
+
+    <script>
+        // Opcional: Imprimir automaticamente ao abrir a página
+        // window.onload = function() { window.print(); }
+    </script>
 </body>
 </html>
